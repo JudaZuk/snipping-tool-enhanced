@@ -1,12 +1,12 @@
 # Snipping Tool Enhanced
 
-A screen capture tool for Windows 11, written in Go, built from the *Windows 11 Snipping Tool Enhanced* technical white paper. Licensed under Apache-2.0.
+A screen capture and screen recording tool for Windows 11, written in Go. Licensed under Apache-2.0.
 
 One executable: `SnippingToolEnhanced.exe`.
 
 ## Implemented in this version
 
-| White paper item | Status |
+| Feature | Status |
 | --- | --- |
 | Square, rectangle, freeform, window and full-screen snips | Done. Freeform areas outside the shape are transparent in PNG and white on the clipboard |
 | Capture bar | Done: snip / record toggle, snipping-area dropdown, color picker, close. Shift + ←/→ switches mode, Esc cancels |
@@ -33,7 +33,7 @@ One executable: `SnippingToolEnhanced.exe`.
 
 ## Not built yet
 
-These white paper features are not in this version. Their buttons are shown grayed out:
+These features are not in this version. Their buttons are shown grayed out:
 
 - Share
 - Quick markup
@@ -71,7 +71,9 @@ Requires Go 1.22 or later. Building on Windows:
 .\build.ps1 -Run
 ```
 
-The output goes to `dist\amd64\SnippingToolEnhanced.exe` and `dist\arm64\SnippingToolEnhanced.exe`.
+The output goes to `dist\amd64\SnippingToolEnhanced.exe` and `dist\arm64\SnippingToolEnhanced.exe`. To build x64 only, run `.\build.ps1 -Arch amd64` (or `make build ARCH=amd64`).
+
+The first build for each architecture compiles Go's standard library and all dependencies, which can take several minutes, longer if antivirus scans Go's build cache. The build prints each package as it compiles. Later builds reuse the cache and take seconds.
 
 From Linux, macOS or WSL, run `make build`. The first build creates `go.sum`; commit it. The build also regenerates the app icon, version info and manifest (`cmd/snippingtoolenhanced/rsrc_windows_*.syso`, `assets/SnippingToolEnhanced.ico`) with `go run -tags genres tools/genres/main.go <version>`.
 

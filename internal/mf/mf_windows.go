@@ -43,6 +43,7 @@ var (
 	mtFrameRate       = win.MustGUID("c459a2e8-3d2c-4e44-b132-fee5156c7bb0")
 	mtPixelAspect     = win.MustGUID("c6376a1e-8d0a-4027-be45-6d9a0ad39bb6")
 	mtDefaultStride   = win.MustGUID("644b4e48-1e02-4516-b0eb-c01ca9d49ac6")
+	mtMinAperture     = win.MustGUID("d7388766-18fe-48c6-a177-ee894867c8c4") // MF_MT_MINIMUM_DISPLAY_APERTURE
 	mtAudioChannels   = win.MustGUID("37e48bf5-645e-4c5b-89de-ada9e29b696a")
 	mtAudioRate       = win.MustGUID("5faeeae7-0290-4c31-9e8a-c534f68d9dba")
 	mtAudioBits       = win.MustGUID("f2deb57f-40fa-4764-aa33-ed4f2d1ff669")
@@ -67,6 +68,7 @@ const (
 	attrGetUINT32 = 7
 	attrGetUINT64 = 8
 	attrGetGUID   = 10
+	attrGetBlob   = 15
 	attrSetUINT32 = 21
 	attrSetUINT64 = 22
 	attrSetGUID   = 24
@@ -114,6 +116,7 @@ const (
 	allStreams       = 0xFFFFFFFE // MF_SOURCE_READER_ALL_STREAMS / ANY_STREAM
 	mediaSource      = 0xFFFFFFFF // MF_SOURCE_READER_MEDIASOURCE
 	flagEndOfStream  = 0x2
+	flagTypeChanged  = 0x20 // MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED
 )
 
 // Startup initializes COM (multithreaded) and Media Foundation for the
@@ -165,6 +168,12 @@ func (a attrs) getGUID(k *windows.GUID) (windows.GUID, error) {
 	var v windows.GUID
 	err := a.HR("GetGUID", attrGetGUID, uintptr(unsafe.Pointer(k)), uintptr(unsafe.Pointer(&v)))
 	return v, err
+}
+
+func (a attrs) getBlob(k *windows.GUID, buf []byte) (int, error) {
+	var n uint32
+	err := a.HR("GetBlob", attrGetBlob, uintptr(unsafe.Pointer(k)), uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)), uintptr(unsafe.Pointer(&n)))
+	return int(n), err
 }
 
 func pack(hi, lo uint32) uint64 { return uint64(hi)<<32 | uint64(lo) }

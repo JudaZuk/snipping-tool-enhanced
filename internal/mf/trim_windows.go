@@ -96,24 +96,11 @@ func Trim(src, dst string, start, end int64) error {
 		}
 	}
 
-	cur, err := r.currentType(firstVideoStream)
+	lay, fps, err := r.videoLayout()
 	if err != nil {
 		return err
 	}
-	size, _ := cur.getU64(&mtFrameSize)
-	rate, _ := cur.getU64(&mtFrameRate)
-	stride32, strideErr := cur.getU32(&mtDefaultStride)
-	cur.Release()
-	w, h := int(size>>32), int(size&0xffffffff)
-	fps := 30
-	if d := rate & 0xffffffff; d != 0 && rate>>32 != 0 {
-		fps = int((rate >> 32) / d)
-	}
-	stride := -w * 4 // RGB without an explicit stride is bottom-up
-	if strideErr == nil {
-		stride = int(int32(stride32))
-	}
-	ow, oh := w&^1, h&^1
+	ow, oh := lay.vw&^1, lay.vh&^1
 	wr, err := NewWriter(dst, ow, oh, fps, hasAudio)
 	if err != nil {
 		return err
@@ -144,6 +131,13 @@ func Trim(src, dst string, start, end int64) error {
 			return err
 		}
 		isVideo := idx == videoIndex
+		if isVideo && flags&flagTypeChanged != 0 {
+			// The decoder settled on its real output format (row padding,
+			// frame size): read it again before using this sample.
+			if l, _, err := r.videoLayout(); err == nil {
+				lay = l
+			}
+		}
 		if flags&flagEndOfStream != 0 {
 			if isVideo {
 				doneVideo = true
@@ -169,29 +163,28 @@ func Trim(src, dst string, start, end int64) error {
 			smp.Release()
 			continue
 		}
-		data, err := sampleBytes(smp)
-		smp.Release()
-		if err != nil {
-			wr.Close()
-			return err
-		}
 		t := ts - start
 		if t < 0 {
 			t = 0
 		}
 		if isVideo {
-			if len(data) < abs(stride)*h {
-				continue
+			ok, err := videoFrame(smp, frame, ow, oh, lay)
+			smp.Release()
+			if err != nil {
+				wr.Close()
+				return err
 			}
-			for y := 0; y < oh; y++ {
-				row := y
-				if stride < 0 {
-					row = h - 1 - y
-				}
-				copy(frame[y*ow*4:(y+1)*ow*4], data[row*abs(stride):row*abs(stride)+ow*4])
+			if !ok {
+				continue
 			}
 			err = wr.WriteVideo(frame, t, dur)
 		} else {
+			data, err2 := sampleBytes(smp)
+			smp.Release()
+			if err2 != nil {
+				wr.Close()
+				return err2
+			}
 			err = wr.WriteAudio(data, t, dur)
 		}
 		if err != nil {
@@ -200,6 +193,115 @@ func Trim(src, dst string, start, end int64) error {
 		}
 	}
 	return wr.Close()
+}
+
+var iid2DBuffer = win.MustGUID("7dc9d5f9-9ed9-44ec-9bbf-0600bb589fbb")
+
+// IMF2DBuffer vtable indices (Windows SDK metadata).
+const (
+	buf2DLock2D   = 3
+	buf2DUnlock2D = 4
+)
+
+// layout is how the decoder lays out a video frame.
+type layout struct {
+	w, h       int // decoded frame size
+	vx, vy     int // visible area (display aperture) offset
+	vw, vh     int // visible area size
+	stride     int // MF_MT_DEFAULT_STRIDE, if reported
+	haveStride bool
+}
+
+// videoLayout reads the current video output type.
+func (r reader) videoLayout() (layout, int, error) {
+	cur, err := r.currentType(firstVideoStream)
+	if err != nil {
+		return layout{}, 0, err
+	}
+	defer cur.Release()
+	size, err := cur.getU64(&mtFrameSize)
+	if err != nil {
+		return layout{}, 0, err
+	}
+	l := layout{w: int(size >> 32), h: int(size & 0xffffffff)}
+	l.vw, l.vh = l.w, l.h
+	if s, err := cur.getU32(&mtDefaultStride); err == nil {
+		l.stride, l.haveStride = int(int32(s)), true
+	}
+	var blob [16]byte
+	if n, err := cur.getBlob(&mtMinAperture, blob[:]); err == nil && n >= 16 {
+		if x, y, w, h, ok := aperture(blob[:]); ok && x+w <= l.w && y+h <= l.h {
+			l.vx, l.vy, l.vw, l.vh = x, y, w, h
+		}
+	}
+	fps := 30
+	if rate, err := cur.getU64(&mtFrameRate); err == nil {
+		if d := rate & 0xffffffff; d != 0 && rate>>32 != 0 {
+			fps = int((rate >> 32) / d)
+		}
+	}
+	return l, fps, nil
+}
+
+// videoFrame copies the visible ow×oh area of a decoded RGB32 sample into dst
+// (top-down). It uses the decoder's real row pitch (IMF2DBuffer.Lock2D);
+// decoders pad rows, so assuming width×4 bytes per row skews the picture.
+func videoFrame(smp *win.COM, dst []byte, ow, oh int, l layout) (bool, error) {
+	if ow > l.vw || oh > l.vh {
+		return false, nil
+	}
+	var buf *win.COM
+	if err := smp.HR("ConvertToContiguousBuffer", smpConvertToContiguousBuffer, uintptr(unsafe.Pointer(&buf))); err != nil {
+		return false, err
+	}
+	defer buf.Release()
+	var b2 *win.COM
+	if buf.Call(0, uintptr(unsafe.Pointer(&iid2DBuffer)), uintptr(unsafe.Pointer(&b2))) == 0 && b2 != nil {
+		defer b2.Release()
+		var scan0 uintptr
+		var pitch int32
+		if b2.Call(buf2DLock2D, uintptr(unsafe.Pointer(&scan0)), uintptr(unsafe.Pointer(&pitch))) == 0 && scan0 != 0 {
+			defer b2.Call(buf2DUnlock2D)
+			ap := int(pitch)
+			if ap < 0 {
+				ap = -ap
+			}
+			if ap < l.w*4 {
+				return false, nil
+			}
+			lo := scan0
+			if pitch < 0 { // bottom-up: scan0 is the top row, stored last
+				lo = scan0 - uintptr(ap*(l.h-1))
+			}
+			src := unsafe.Slice((*byte)(win.PtrFromUintptr(lo)), ap*(l.h-1)+l.w*4)
+			return copyRegion(dst, ow, oh, src, int(pitch), l.h, l.vx, l.vy), nil
+		}
+	}
+	// No 2D buffer: use the reported stride, or work it out from the size.
+	var p uintptr
+	var max, cur uint32
+	if err := buf.HR("Lock", bufLock, uintptr(unsafe.Pointer(&p)), uintptr(unsafe.Pointer(&max)), uintptr(unsafe.Pointer(&cur))); err != nil {
+		return false, err
+	}
+	defer buf.Call(bufUnlock)
+	data := unsafe.Slice((*byte)(win.PtrFromUintptr(p)), cur)
+	pitch := l.stride
+	if !l.haveStride || pitch == 0 {
+		pitch = -guessPitch(int(cur), l.w, l.h) // RGB without a stride attribute is bottom-up
+	}
+	ap := pitch
+	if ap < 0 {
+		ap = -ap
+	}
+	rows := int(cur) / ap
+	if rows < l.h {
+		return false, nil
+	}
+	if pitch < 0 {
+		// bottom-up in a contiguous buffer: any height padding comes first
+		return copyRegion(dst, ow, oh, data[(rows-l.h)*ap:], pitch, l.h, l.vx, l.vy), nil
+	}
+	return copyRegion(dst, ow, oh, data, pitch, l.h, l.vx, l.vy), nil
 }
 
 func sampleBytes(smp *win.COM) ([]byte, error) {
