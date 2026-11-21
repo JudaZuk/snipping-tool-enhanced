@@ -7,7 +7,6 @@ package visualsearch
 import (
 	"fmt"
 	"image"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,7 +45,7 @@ func Open(id string, img image.Image) error {
 // openInBrowser opens the page with the app that handles web links (the
 // default browser), not whatever is set to open .html files.
 func openInBrowser(path string) error {
-	u := (&url.URL{Scheme: "file", Path: "/" + filepath.ToSlash(path)}).String()
+	u := fileURL(path)
 	cmd := win.AssocCommand("https")
 	exe, _ := splitCommand(cmd)
 	if exe != "" && strings.HasSuffix(strings.ToLower(exe), ".exe") {
