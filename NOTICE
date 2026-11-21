@@ -5,3 +5,7 @@ Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 This is an independent open-source project, not affiliated with or endorsed
 by Microsoft. "Windows" and "Snipping Tool" are trademarks of Microsoft.
+
+The Quick markup emoji are Microsoft's Fluent Emoji (Color style),
+https://github.com/microsoft/fluentui-emoji, used under the MIT License
+(see internal/emoji/png/LICENSE-fluentui-emoji.txt).

@@ -37,7 +37,7 @@ func TestLayoutAndHit(t *testing.T) {
 	if m, ok := MenuMode(b.Hit(items[4].Rect.Min.Add(image.Pt(5, 5)), st)); !ok || m != Freeform {
 		t.Fatal("menu hit", m)
 	}
-	if len(b.menuItems(KindRecord)) != 2 || Enabled(ItemColor, KindRecord) || !Enabled(ItemText, KindSnip) || Enabled(ItemText, KindRecord) || Enabled(ItemMarkup, KindSnip) {
+	if len(b.menuItems(KindRecord)) != 2 || Enabled(ItemColor, KindRecord) || !Enabled(ItemText, KindSnip) || Enabled(ItemText, KindRecord) || !Enabled(ItemMarkup, KindSnip) || Enabled(ItemMarkup, KindRecord) {
 		t.Fatal("record mode rules")
 	}
 	if !b.menuRect(KindSnip).In(b.Area) {

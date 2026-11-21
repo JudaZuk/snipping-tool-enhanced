@@ -37,6 +37,29 @@ func (o *COM) Release() {
 	}
 }
 
+// QueryInterface asks the object for another interface.
+func (o *COM) QueryInterface(iid *windows.GUID) (*COM, error) {
+	var out *COM
+	if err := o.HR("QueryInterface", 0, uintptr(unsafe.Pointer(iid)), uintptr(unsafe.Pointer(&out))); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// AddRef and Release on a raw interface pointer.
+func AddRef(p uintptr) {
+	if p != 0 {
+		(*COM)(PtrFromUintptr(p)).Call(1)
+	}
+}
+
+// Release releases a raw interface pointer (safe on 0).
+func Release(p uintptr) {
+	if p != 0 {
+		(*COM)(PtrFromUintptr(p)).Call(2)
+	}
+}
+
 // HRErr converts an HRESULT returned by a plain DLL function.
 func HRErr(name string, r uintptr) error {
 	if int32(r) < 0 {

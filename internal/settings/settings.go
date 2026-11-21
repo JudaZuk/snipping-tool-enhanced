@@ -46,6 +46,8 @@ type Settings struct {
 	Kind  string `json:"kind"`  // snip | record
 	Mode  string `json:"mode"`  // square | rectangle | freeform | window | fullscreen
 	Delay int    `json:"delay"` // 0, 3, 5, 10
+	// QuickMarkup is the capture bar's Quick markup toggle (Ctrl+E).
+	QuickMarkup bool `json:"quickMarkup"`
 }
 
 // Default returns the factory settings.

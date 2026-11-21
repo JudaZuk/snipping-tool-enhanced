@@ -14,6 +14,7 @@ import (
 
 	"snippingtoolenhanced/internal/capture"
 	"snippingtoolenhanced/internal/imaging"
+	"snippingtoolenhanced/internal/markup"
 	"snippingtoolenhanced/internal/render"
 	"snippingtoolenhanced/internal/win"
 )
@@ -35,6 +36,11 @@ type Options struct {
 	Mode  Mode
 	Text  bool // start in Text Extractor
 	Dark  bool
+	// QuickMarkup starts with Quick markup turned on.
+	QuickMarkup bool
+	// Save is called for Quick markup's Save button; it shows the Save dialog
+	// (owned by the overlay) and reports whether the snip was saved.
+	Save func(owner windows.HWND, r Result) bool
 }
 
 // Result is what the user picked, in frame coordinates.
@@ -46,6 +52,12 @@ type Result struct {
 	Poly      []image.Point   // freeform outline
 	Color     color.RGBA      // color picker
 	ColorText string
+	// Quick markup: the marks drawn over the area and the button used
+	// (ActCopy, ActSave or ActShare); empty when Quick markup was off.
+	Marks  []markup.Object
+	Action string
+	// QuickMarkup is the toggle's state when the overlay closed.
+	QuickMarkup bool
 }
 
 const className = "SnippingToolEnhancedOverlay"
@@ -75,6 +87,8 @@ type state struct {
 	poly        []image.Point
 	done        bool
 	result      Result
+	quick       bool     // Quick markup toggle
+	mk          *mkState // non-nil while marking up
 }
 
 var st *state
@@ -104,7 +118,8 @@ func Run(o Options) (Result, error) {
 	if err := win.RegisterClass(className, wndProc, win.IDC_CROSS, 0); err != nil {
 		return Result{}, err
 	}
-	s := &state{opts: o, kind: o.Kind, mode: o.Mode, textActive: o.Text && o.Kind == KindSnip, th: render.Light, loupe: Loupe{Sample: 11}, result: Result{Outcome: Cancelled}}
+	s := &state{opts: o, kind: o.Kind, mode: o.Mode, textActive: o.Text && o.Kind == KindSnip, th: render.Light, loupe: Loupe{Sample: 11}, result: Result{Outcome: Cancelled},
+		quick: o.QuickMarkup}
 	if o.Dark {
 		s.th = render.Dark
 	}
@@ -170,9 +185,11 @@ func Run(o Options) (Result, error) {
 		win.DispatchMessage(&m)
 	}
 	win.DestroyWindow(s.hwnd)
+	s.closeMarkup()
 	if quit {
 		win.PostQuitMessage(int(m.WParam))
 	}
+	s.result.QuickMarkup = s.quick
 	return s.result, nil
 }
 
@@ -217,7 +234,7 @@ func (s *state) setSel(r image.Rectangle) {
 }
 
 func (s *state) barState() BarState {
-	return BarState{Kind: s.kind, Mode: s.mode, ColorActive: s.colorActive, TextActive: s.textActive, Hover: s.hover, MenuOpen: s.menuOpen}
+	return BarState{Kind: s.kind, Mode: s.mode, ColorActive: s.colorActive, TextActive: s.textActive, Hover: s.hover, MenuOpen: s.menuOpen, Markup: s.quick}
 }
 
 func hasMode(list []Mode, m Mode) bool {
@@ -329,6 +346,10 @@ func (s *state) finishRect(r image.Rectangle) {
 	if r.Dx() < 2 || r.Dy() < 2 {
 		return
 	}
+	if s.quickOn() {
+		s.enterMarkup(r, nil)
+		return
+	}
 	s.result = Result{Outcome: Captured, Kind: s.kind, Mode: s.mode, Rect: r}
 	s.done = true
 }
@@ -341,6 +362,11 @@ func (s *state) cancel() {
 func pt(lp uintptr) image.Point { return image.Pt(int(win.LoInt(lp)), int(win.HiInt(lp))) }
 
 func (s *state) proc(msg uint32, wp, lp uintptr) uintptr {
+	if s.mk != nil {
+		if r, ok := s.markupProc(msg, wp, lp); ok {
+			return r
+		}
+	}
 	switch msg {
 	case win.WM_ERASEBKGND:
 		return 1
@@ -356,6 +382,10 @@ func (s *state) proc(msg uint32, wp, lp uintptr) uintptr {
 		return 1
 	case win.WM_KEYDOWN, win.WM_SYSKEYDOWN:
 		shift := win.KeyDown(win.VK_SHIFT)
+		if wp == 'E' && win.KeyDown(win.VK_CONTROL) && Enabled(ItemMarkup, s.kind) {
+			s.setQuick(!s.quick)
+			return 0
+		}
 		switch wp {
 		case win.VK_ESCAPE:
 			if s.menuOpen {
@@ -440,7 +470,10 @@ func (s *state) proc(msg uint32, wp, lp uintptr) uintptr {
 			}
 			return 0
 		case ItemMarkup:
-			return 0 // not available yet
+			if Enabled(ItemMarkup, s.kind) {
+				s.setQuick(!s.quick)
+			}
+			return 0
 		}
 		if s.colorActive {
 			c := s.opts.Frame.Image.RGBAAt(p.X, p.Y)
@@ -508,7 +541,10 @@ func (s *state) proc(msg uint32, wp, lp uintptr) uintptr {
 		}
 		if s.mode == Freeform {
 			s.poly = append(s.poly, p)
-			if b := polyBounds(s.poly); len(s.poly) >= 3 && b.Dx() >= 4 && b.Dy() >= 4 {
+			if b := polyBounds(s.poly); len(s.poly) >= 3 && b.Dx() >= 4 && b.Dy() >= 4 && s.quickOn() {
+				s.enterMarkup(b.Intersect(s.opts.Frame.Image.Bounds()), s.poly)
+				s.poly = nil
+			} else if b := polyBounds(s.poly); len(s.poly) >= 3 && b.Dx() >= 4 && b.Dy() >= 4 {
 				s.result = Result{Outcome: Captured, Kind: s.kind, Mode: Freeform, Poly: s.poly, Rect: b}
 				s.done = true
 			} else {
@@ -554,6 +590,11 @@ func (s *state) paint() {
 	pr := ps.Paint
 	bdc := s.back.DC
 	win.BitBlt(bdc, pr.Left, pr.Top, pr.Right-pr.Left, pr.Bottom-pr.Top, s.dim.DC, pr.Left, pr.Top)
+	if s.mk != nil {
+		s.paintMarkup(image.Rect(int(pr.Left), int(pr.Top), int(pr.Right), int(pr.Bottom)))
+		win.BitBlt(hdc, pr.Left, pr.Top, pr.Right-pr.Left, pr.Bottom-pr.Top, bdc, pr.Left, pr.Top)
+		return
+	}
 
 	if len(s.poly) > 1 {
 		pts := make([]win.Point, len(s.poly))

@@ -27,6 +27,7 @@ import (
 	"snippingtoolenhanced/internal/output"
 	"snippingtoolenhanced/internal/overlay"
 	"snippingtoolenhanced/internal/settings"
+	"snippingtoolenhanced/internal/share"
 	"snippingtoolenhanced/internal/snip"
 	"snippingtoolenhanced/internal/win"
 )
@@ -200,6 +201,22 @@ func doSnip(kind overlay.Kind) {
 	default:
 		return
 	}
+	// Quick markup finished with Save (already saved), Share or Copy.
+	switch res.Action {
+	case overlay.ActSave:
+		return
+	case overlay.ActShare:
+		p, err := snip.ShareFile(res.Image)
+		if err == nil {
+			err = share.At(res.Area.Min.Add(res.Area.Max).Div(2), p)
+		}
+		if err != nil {
+			notify.Show(nil, "The snip could not be shared", err.Error(), dark, nil)
+		}
+		return
+	case overlay.ActCopy:
+		s.AutoCopyChanges = true
+	}
 	d, err := snip.Deliver(res.Image, s)
 	if d.WorkPath == "" {
 		if err != nil {
@@ -208,7 +225,7 @@ func doSnip(kind overlay.Kind) {
 		return
 	}
 	open := func() { openEditor(d.WorkPath, s) }
-	if s.OpenEditorAfterSnip {
+	if s.OpenEditorAfterSnip && res.Action == "" {
 		open()
 		return
 	}

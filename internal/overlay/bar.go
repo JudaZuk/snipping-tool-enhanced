@@ -75,6 +75,7 @@ type BarState struct {
 	TextActive  bool // Text Extractor
 	Hover       string
 	MenuOpen    bool
+	Markup      bool // Quick markup is on
 }
 
 // BarItem is one control on the capture bar.
@@ -144,9 +145,7 @@ func (b Bar) item(id string) image.Rectangle {
 // Enabled reports whether a bar item works in this version and kind.
 func Enabled(id string, k Kind) bool {
 	switch id {
-	case ItemMarkup:
-		return false // Quick markup is not built yet
-	case ItemColor, ItemText:
+	case ItemMarkup, ItemColor, ItemText:
 		return k == KindSnip
 	}
 	return true
@@ -202,7 +201,7 @@ func MenuMode(hit string) (Mode, bool) {
 
 var tips = map[string]string{
 	ItemSnip: "Snip", ItemRecord: "Record", ItemMode: "Snipping area",
-	ItemMarkup: "Quick markup – not available in this version yet", ItemColor: "Color picker",
+	ItemMarkup: "Quick markup (Ctrl+E)", ItemColor: "Color picker",
 	ItemText: "Text extractor", ItemClose: "Close (Esc)",
 }
 
@@ -226,7 +225,8 @@ func (b Bar) Render(backdrop *image.RGBA, th render.Theme, st BarState) *image.R
 	for _, it := range b.Items {
 		ir := it.Rect
 		on := (it.ID == ItemSnip && st.Kind == KindSnip) || (it.ID == ItemRecord && st.Kind == KindRecord) ||
-			(it.ID == ItemColor && st.ColorActive) || (it.ID == ItemText && st.TextActive) || (it.ID == ItemMode && st.MenuOpen)
+			(it.ID == ItemColor && st.ColorActive) || (it.ID == ItemText && st.TextActive) || (it.ID == ItemMode && st.MenuOpen) ||
+			(it.ID == ItemMarkup && st.Markup && st.Kind == KindSnip)
 		en := Enabled(it.ID, st.Kind)
 		rad := f(b.px(4))
 		switch {

@@ -114,6 +114,7 @@ var (
 	pPolyline               = gdi32.NewProc("Polyline")
 	pCreatePolygonRgn       = gdi32.NewProc("CreatePolygonRgn")
 	pSelectClipRgn          = gdi32.NewProc("SelectClipRgn")
+	pGdiFlush               = gdi32.NewProc("GdiFlush")
 	pSetWindowLongPtrW      = user32.NewProc("SetWindowLongPtrW")
 	pCallWindowProcW        = user32.NewProc("CallWindowProcW")
 	pAllowSetForegroundWnd  = user32.NewProc("AllowSetForegroundWindow")
@@ -162,6 +163,9 @@ func Polyline(dc uintptr, pts []Point) {
 	}
 	pPolyline.Call(dc, uintptr(unsafe.Pointer(&pts[0])), uintptr(len(pts)))
 }
+
+// GdiFlush finishes pending GDI drawing, before a DIB's bits are touched directly.
+func GdiFlush() { pGdiFlush.Call() }
 
 // ClipPolygon restricts drawing on dc to a polygon; pass nil to clear.
 func ClipPolygon(dc uintptr, pts []Point) {
@@ -289,6 +293,10 @@ const (
 	IDC_ARROW         = 32512
 	IDC_CROSS         = 32515
 	IDC_HAND          = 32649
+	IDC_SIZENWSE      = 32642
+	IDC_SIZENESW      = 32643
+	IDC_SIZEWE        = 32644
+	IDC_SIZENS        = 32645
 	SRCCOPY           = 0x00CC0020
 	CAPTUREBLT        = 0x40000000
 	DIB_RGB_COLORS    = 0

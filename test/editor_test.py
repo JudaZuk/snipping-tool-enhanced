@@ -40,6 +40,8 @@ window.stNewSnip = asyncRec('stNewSnip', () => ({ image: window.__image }));
 window.stSaveAs = asyncRec('stSaveAs', 'C:\\\\Pictures\\\\Screenshots\\\\a.png');
 window.stOpenFile = asyncRec('stOpenFile', null); window.stPickFolder = asyncRec('stPickFolder', 'D:\\\\Shots');
 window.stSaveVideo = asyncRec('stSaveVideo', (...a) => { window.__saveVideo = a; return 'C:\\\\Videos\\\\v.mp4'; });
+window.stShareImage = asyncRec('stShareImage', (u) => { window.__shareImage = u; return null; });
+window.stShareVideo = asyncRec('stShareVideo', (...a) => { window.__shareVideo = a; return null; });
 window.__gifFrames = 0;
 window.stCopyText = rec('stCopyText', (t) => { window.__copied = t; return null; });
 window.stOcr = asyncRec('stOcr', () => ({ angle: 0, lines: [
@@ -89,6 +91,12 @@ def video_tests(b, shots, errors, page):
     pg.wait_for_function("!S.video.unsaved")
     a = pg.evaluate("window.__saveVideo")
     assert a[0] == "C:\\r.mp4" and 1.5 < a[1] < 2.5 and a[2] > 5.5, a
+    # Share sends the recording and the trim range.
+    assert pg.is_enabled("#btnShareVideo")
+    pg.click("#btnShareVideo")
+    pg.wait_for_function("window.__shareVideo")
+    a = pg.evaluate("window.__shareVideo")
+    assert a[0] == "C:\\r.mp4" and 1.5 < a[1] < 2.5, a
     # GIF export (low quality, copy)
     pg.click("#btnGif"); pg.click("[data-q=low]")
     if shots: pg.screenshot(path=str(shots / "gif-flyout.png"))
@@ -274,6 +282,16 @@ def main():
         pg.wait_for_function("document.getElementById('toast').textContent.includes('a.png')")
         assert pg.evaluate("S.hIndex === S.savedIndex")
         pg.click("#btnCopy"); pg.click("#btnPaint")
+        # Share sends the marked-up image.
+        assert pg.is_enabled("#btnShare")
+        pg.click("#btnShare")
+        pg.wait_for_function("window.__shareImage")
+        assert pg.evaluate("window.__shareImage.startsWith('data:image/png')")
+        # Quick markup's Copy from the New button only shows a notice.
+        pg.evaluate("window.__keepImg = S.img; window.stNewSnip = (id) => { setTimeout(() => window.stDone(id, { notice: 'Snip copied to clipboard' }, ''), 10); return Promise.resolve(); }")
+        pg.click("#btnNew")
+        pg.wait_for_function("document.getElementById('toast').textContent.includes('Snip copied')")
+        assert pg.evaluate("S.img === window.__keepImg")
         for need in ["stSaveAs", "stCopy", "stEditInPaint", "stSetDirty", "stNewSnip"]:
             assert need in pg.evaluate("window.__calls"), need
 

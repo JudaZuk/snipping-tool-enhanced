@@ -114,6 +114,33 @@ func loadVideo(path string) (*VideoInfo, error) {
 }
 
 // saveVideo copies or trims the recording into a file the user picks.
+// shareVideoFile returns the file to share: the recording itself, or its
+// trimmed part written to a temporary file.
+func shareVideoFile(src string, start, end, duration float64) (string, error) {
+	if start <= 0.05 && !(duration > 0 && end < duration-0.05) {
+		return src, nil
+	}
+	dir := filepath.Join(output.DataDir(), "Share")
+	go output.Cleanup(dir, 7*24*time.Hour)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	name := strings.TrimSuffix(filepath.Base(src), filepath.Ext(src)) + " (trimmed).mp4"
+	p := filepath.Join(dir, name)
+	shutdown, err := mf.Startup()
+	if err != nil {
+		return "", err
+	}
+	defer shutdown()
+	tmp := p + ".partial.mp4"
+	if err := mf.Trim(src, tmp, int64(start*1e7), int64(end*1e7)); err != nil {
+		os.Remove(tmp)
+		return "", fmt.Errorf("trim: %w", err)
+	}
+	_ = os.Remove(p)
+	return p, os.Rename(tmp, p)
+}
+
 func (e *editor) saveVideo(src string, start, end, duration float64) (string, error) {
 	dir := filepath.Dir(src)
 	if output.IsUnsavedRecording(src) {

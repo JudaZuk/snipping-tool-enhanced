@@ -9,7 +9,10 @@ package snip
 import (
 	"fmt"
 	"image"
+	"image/draw"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/windows"
@@ -17,6 +20,7 @@ import (
 	"snippingtoolenhanced/internal/capture"
 	"snippingtoolenhanced/internal/clipboard"
 	"snippingtoolenhanced/internal/imaging"
+	"snippingtoolenhanced/internal/markup"
 	"snippingtoolenhanced/internal/ocr"
 	"snippingtoolenhanced/internal/output"
 	"snippingtoolenhanced/internal/overlay"
@@ -35,7 +39,11 @@ type Result struct {
 	VideoPath string // recordings
 	Text      string // Text Extractor
 	Copied    bool   // Text Extractor copied Text to the clipboard
-	Err       error
+	// Action is the Quick markup button that finished the snip:
+	// overlay.ActCopy, overlay.ActSave (already saved) or overlay.ActShare.
+	Action string
+	Area   image.Rectangle // the snipped area, in virtual-screen coordinates
+	Err    error
 }
 
 // Text Extractor outcome (re-exported for callers).
@@ -84,9 +92,26 @@ func run(kind overlay.Kind, mode overlay.Mode, text bool, delay time.Duration, s
 	if err != nil {
 		return Result{Outcome: overlay.Cancelled, Err: err}
 	}
-	res, err := overlay.Run(overlay.Options{Frame: frame, Kind: kind, Mode: mode, Text: text, Dark: Dark(s)})
+	save := func(owner windows.HWND, r overlay.Result) bool {
+		img := Compose(frame, r, s)
+		if img == nil {
+			return false
+		}
+		p, err := SaveAs(owner, img, s)
+		if err != nil {
+			win.MessageBox(owner, "The snip could not be saved.\n\n"+err.Error(), "Snipping Tool Enhanced", win.MB_ICONERROR)
+			return false
+		}
+		return p != ""
+	}
+	res, err := overlay.Run(overlay.Options{Frame: frame, Kind: kind, Mode: mode, Text: text, Dark: Dark(s), QuickMarkup: s.QuickMarkup, Save: save})
 	if err != nil {
 		return Result{Outcome: overlay.Cancelled, Err: err}
+	}
+	if res.QuickMarkup != s.QuickMarkup { // remember the toggle
+		cur := settings.Load(output.SettingsPath())
+		cur.QuickMarkup = res.QuickMarkup
+		_ = settings.Save(output.SettingsPath(), cur)
 	}
 	switch res.Outcome {
 	case overlay.ColorPicked:
@@ -114,21 +139,74 @@ func run(kind overlay.Kind, mode overlay.Mode, text bool, delay time.Duration, s
 		h = 0
 		return recordArea(res.Rect.Add(frame.Origin), res.Mode, s)
 	}
-	var img *image.NRGBA
-	if res.Mode == overlay.Freeform {
-		img = imaging.Freeform(frame.Image, res.Poly)
-	} else {
-		img = imaging.OpaqueToNRGBA(imaging.Crop(frame.Image, res.Rect))
-	}
+	img := Compose(frame, res, s)
 	if img == nil {
 		return Result{Outcome: overlay.Cancelled}
+	}
+	return Result{Outcome: overlay.Captured, Kind: overlay.KindSnip, Image: img, Mode: res.Mode, Action: res.Action,
+		Area: res.Rect.Add(frame.Origin)}
+}
+
+// Compose cuts the snip out of the frozen screen, with any Quick markup marks
+// and the border setting.
+func Compose(frame *capture.Frame, res overlay.Result, s settings.Settings) *image.NRGBA {
+	src := frame.Image
+	area := res.Rect
+	if res.Mode == overlay.Freeform {
+		area = image.Rectangle{}
+		for _, p := range res.Poly {
+			area = area.Union(image.Rectangle{Min: p, Max: p.Add(image.Pt(1, 1))})
+		}
+	}
+	if len(res.Marks) > 0 {
+		area = area.Intersect(src.Bounds())
+		work := image.NewRGBA(area)
+		draw.Draw(work, area, src, area.Min, draw.Src)
+		markup.DrawAll(work, res.Marks)
+		src = work
+	}
+	var img *image.NRGBA
+	if res.Mode == overlay.Freeform {
+		img = imaging.Freeform(src, res.Poly)
+	} else {
+		img = imaging.OpaqueToNRGBA(imaging.Crop(src, res.Rect))
+	}
+	if img == nil {
+		return nil
 	}
 	if s.BorderEnabled {
 		if c, err := imaging.ParseHexColor(s.BorderColor); err == nil {
 			img = imaging.BorderN(img, c, s.BorderThickness)
 		}
 	}
-	return Result{Outcome: overlay.Captured, Kind: overlay.KindSnip, Image: img, Mode: res.Mode}
+	return img
+}
+
+// SaveAs asks where to save img (PNG, JPEG or GIF) and saves it. It returns
+// "" when the dialog was cancelled.
+func SaveAs(owner windows.HWND, img image.Image, s settings.Settings) (string, error) {
+	dir := output.ScreenshotsFolder(s.SaveFolder)
+	_ = os.MkdirAll(dir, 0o755)
+	name := "Screenshot " + time.Now().Format("2006-01-02 150405")
+	p, idx := win.SaveFileDialog(owner, "Save as", dir, name,
+		"PNG (*.png)\x00*.png\x00JPEG (*.jpg)\x00*.jpg;*.jpeg\x00GIF (*.gif)\x00*.gif\x00", "png")
+	if p == "" {
+		return "", nil
+	}
+	want := map[int]string{1: ".png", 2: ".jpg", 3: ".gif"}[idx]
+	ext := strings.ToLower(filepath.Ext(p))
+	if want != "" && ext != want && !(want == ".jpg" && ext == ".jpeg") {
+		p = strings.TrimSuffix(p, filepath.Ext(p)) + want
+	}
+	return p, output.Write(img, p)
+}
+
+// ShareFile writes img to a temporary PNG for the share sheet (deleted after
+// 7 days, like the editor's working copies).
+func ShareFile(img image.Image) (string, error) {
+	dir := filepath.Join(output.DataDir(), "Share")
+	go output.Cleanup(dir, 7*24*time.Hour)
+	return output.SaveNew(img, dir)
 }
 
 // recordArea shows the recording controls for rect (virtual-screen coordinates).

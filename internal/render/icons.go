@@ -32,6 +32,18 @@ const (
 	IconMicOff     = "micoff"
 	IconSpeaker    = "speaker"
 	IconSpeakerOff = "speakeroff"
+	IconPen        = "pen"
+	IconHighlight  = "highlighter"
+	IconEraser     = "eraser"
+	IconShapes     = "shapes"
+	IconEmoji      = "emoji"
+	IconCopy       = "copy"
+	IconSave       = "save"
+	IconShare      = "share"
+	IconLine       = "line"
+	IconArrow      = "arrow"
+	IconRect       = "rect"
+	IconOval       = "oval"
 )
 
 // pen draws pixel-snapped strokes: design coordinates are on a 20×20 grid and
@@ -187,6 +199,51 @@ func DrawIcon(dst *image.RGBA, name string, x, y, size float64, c color.RGBA) {
 		q.line(6, 7, 14, 7)
 		q.line(6, 10, 14, 10)
 		q.line(6, 13, 11, 13)
+	case IconPen: // same drawings as the editor toolbar
+		q.line(6.8, 3.5, 13.2, 3.5, 14.5, 7.8, 10, 17, 5.5, 7.8, 6.8, 3.5)
+	case IconHighlight:
+		q.line(6.5, 2.5, 13.5, 2.5, 13.5, 7.5, 6.5, 7.5, 6.5, 2.5)
+		q.line(6.5, 7.5, 7.5, 10.5, 12.5, 10.5, 13.5, 7.5)
+		q.line(7.6, 10.6, 12.4, 10.6, 11.4, 16, 8.6, 17.2, 7.6, 10.6)
+	case IconEraser:
+		q.line(8.2, 16.5, 16.2, 16.5)
+		q.line(3.9, 12.6, 11.6, 4.9, 12.6, 4.5, 13.7, 4.9, 16.1, 7.3, 16.5, 8.3, 16.1, 9.4, 9.5, 16, 8.4, 16.5, 7.4, 16.5, 6.4, 16.1, 3.9, 13.6, 3.9, 12.6)
+		q.line(8, 8.5, 12.5, 13)
+	case IconShapes:
+		q.rrect(3, 3, 11.5, 11.5, 1.2)
+		q.arc(12.5, 12.5, 4.5, 0, 360)
+	case IconEmoji:
+		q.arc(10, 10, 7, 0, 360)
+		q.arc(10, 9.2, 3.6, 35, 145)
+		q.fillCircle(7.5, 8.3, 0.9)
+		q.fillCircle(12.5, 8.3, 0.9)
+	case IconCopy:
+		q.rrect(7, 7, 16.5, 16.5, 1.5)
+		q.line(13, 7, 13, 5, 12.6, 3.9, 11.5, 3.5, 5, 3.5, 3.9, 3.9, 3.5, 5, 3.5, 11.5, 3.9, 12.6, 5, 13, 7, 13)
+	case IconSave:
+		q.line(4.5, 3.5, 13.5, 3.5, 16.5, 6.5, 16.5, 15.5, 15.5, 16.5, 4.5, 16.5, 3.5, 15.5, 3.5, 4.5, 4.5, 3.5)
+		q.line(7, 3.5, 7, 7, 12.5, 7, 12.5, 3.5)
+		q.line(6.5, 16.5, 6.5, 11.5, 13.5, 11.5, 13.5, 16.5)
+	case IconShare:
+		q.line(8, 6.5, 5, 6.5, 3.9, 6.9, 3.5, 8, 3.5, 15, 3.9, 16.1, 5, 16.5, 15, 16.5, 16.1, 16.1, 16.5, 15, 16.5, 12)
+		q.line(12.5, 3.5, 16.5, 7, 12.5, 10.5)
+		q.line(16.5, 7, 13, 7)
+		q.arc(13, 12, 5, 180, 270)
+	case IconLine:
+		q.line(4, 16, 16, 4)
+	case IconArrow:
+		q.line(4, 16, 16, 4)
+		q.line(9, 4, 16, 4, 16, 11)
+	case IconRect:
+		q.rrect(3, 5, 17, 15, 1)
+	case IconOval:
+		c := q.pt(10, 10)
+		var ps []Pt
+		for i := 0; i <= 48; i++ {
+			t := float64(i) / 48 * 2 * math.Pi
+			ps = append(ps, Pt{c.X + 7*q.k*math.Cos(t), c.Y + 5.5*q.k*math.Sin(t)})
+		}
+		q.p.Stroke(ps, q.w, false)
 	case IconClose:
 		q.line(4, 4, 16, 16)
 		q.line(16, 4, 4, 16)
@@ -226,6 +283,21 @@ func DrawIcon(dst *image.RGBA, name string, x, y, size float64, c color.RGBA) {
 			q.arc(10, 10, 4, -50, 50)
 			q.arc(10, 10, 7, -50, 50)
 		}
+	}
+	q.p.Fill(dst, c)
+}
+
+// DrawToolTip fills the colored tip of the pen or highlighter icon, which
+// shows the current ink color (as in the editor toolbar).
+func DrawToolTip(dst *image.RGBA, name string, x, y, size float64, c color.RGBA) {
+	q := newPen(x, y, size)
+	switch name {
+	case IconPen:
+		q.fillPoly(7.6, 9.4, 12.4, 9.4, 10, 15.2)
+	case IconHighlight:
+		q.fillPoly(8.1, 11.1, 11.9, 11.1, 11, 15.6, 9.1, 16.4)
+	default:
+		return
 	}
 	q.p.Fill(dst, c)
 }

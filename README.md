@@ -9,7 +9,8 @@ One executable: `SnippingToolEnhanced.exe`.
 | Feature | Status |
 | --- | --- |
 | Square, rectangle, freeform, window and full-screen snips | Done. Freeform areas outside the shape are transparent in PNG and white on the clipboard |
-| Capture bar | Done: snip / record toggle, snipping-area dropdown, color picker, close. Shift + ←/→ switches mode, Esc cancels |
+| Capture bar | Done: snip / record toggle, snipping-area dropdown, Quick markup toggle, color picker, close. Shift + ←/→ switches mode, Esc cancels |
+| Quick markup | Done: turn it on with the capture bar button or Ctrl + E, then select an area. Mark it up right there with pen, highlighter, eraser (*Erase all ink*), shapes (line, arrow, rectangle, oval) and emoji, re-crop it with the grabbers, then Copy (Ctrl + C), Save as (Ctrl + S) or Share. Ctrl + Z / Ctrl + Y undo and redo, Esc cancels. Shared snips are not copied or saved automatically |
 | Delay 3 / 5 / 10 s | Done (delay dropdown, Alt + D) |
 | Color picker | Done: magnifier, HEX / RGB / HSL (Tab switches format), scroll or Ctrl + / Ctrl − zooms, click copies |
 | Shortcuts | Win + Alt + S (snip), Win + Alt + V (record), Print Screen (see below) |
@@ -24,6 +25,7 @@ One executable: `SnippingToolEnhanced.exe`.
 | Ruler, protractor, touch writing | Done (in the "…" menu; scroll rotates, Shift + scroll by 15°) |
 | Crop with handles (Shift keeps it square), undo / redo, zoom (Ctrl + scroll, Ctrl + 0 / 1) | Done |
 | Save as PNG / JPEG / GIF, copy, Edit in Paint, print, open file | Done |
+| Share | Done: the Windows share sheet (Mail, Teams, Nearby sharing and other apps) for screenshots, recordings (the trimmed part, if trimmed) and Quick markup snips |
 | Settings page, light / dark / system theme | Done |
 | Screen recording | Done: rectangle or window area, 3-second countdown, Start, Pause/Resume, Stop, Delete, microphone and system audio toggles. Output is MP4 (H.264/AAC, about 30 fps), saved to *Videos\Screen Recordings* |
 | Text Extractor | Done: capture bar or app window button, select an area, its text is copied. Settings: *Automatically copy text*, *Remove line breaks* |
@@ -35,12 +37,9 @@ One executable: `SnippingToolEnhanced.exe`.
 
 These features are not in this version. Their buttons are shown grayed out:
 
-- Share
-- Quick markup
 - Perfect screenshot
 - Visual Search
 - The `ms-screenclip:` protocol
-- Edit in Clipchamp
 - HDR settings
 
 Text recognition needs an OCR language. Most Windows 11 installs have one for the display language; others can be added in *Settings > Time & language > Language & region*.

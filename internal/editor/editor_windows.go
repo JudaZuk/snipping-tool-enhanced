@@ -40,6 +40,7 @@ import (
 	"snippingtoolenhanced/internal/output"
 	"snippingtoolenhanced/internal/overlay"
 	"snippingtoolenhanced/internal/settings"
+	"snippingtoolenhanced/internal/share"
 	"snippingtoolenhanced/internal/snip"
 	"snippingtoolenhanced/internal/win"
 )
@@ -78,6 +79,7 @@ type snipResult struct {
 	ColorText string     `json:"color,omitempty"`
 	Text      *textInfo  `json:"text,omitempty"`
 	NewWindow bool       `json:"newWindow,omitempty"`
+	Notice    string     `json:"notice,omitempty"` // shown as a toast (Quick markup Copy / Save)
 }
 
 type textInfo struct {
@@ -225,6 +227,7 @@ func (e *editor) bind(initial *ImageInfo, initialVideo *VideoInfo) {
 		if err != nil {
 			return e.s, err
 		}
+		s.QuickMarkup = settings.Load(output.SettingsPath()).QuickMarkup // owned by the capture bar
 		e.s = s
 		win.SetDarkTitleBar(e.hwnd, snip.Dark(s))
 		return s, settings.Save(output.SettingsPath(), s)
@@ -348,6 +351,36 @@ func (e *editor) bind(initial *ImageInfo, initialVideo *VideoInfo) {
 		e.fitTo(info.Width, info.Height)
 		return snipResult{Image: info}, nil
 	})
+	e.bindAsync("stShareImage", func(a []json.RawMessage) (any, error) {
+		var dataURL string
+		if len(a) > 0 {
+			_ = json.Unmarshal(a[0], &dataURL)
+		}
+		img, err := decodeDataURL(dataURL)
+		if err != nil {
+			return nil, err
+		}
+		p, err := snip.ShareFile(img)
+		if err != nil {
+			return nil, err
+		}
+		return nil, share.File(e.hwnd, p)
+	})
+	e.bindAsync("stShareVideo", func(a []json.RawMessage) (any, error) {
+		var p string
+		var start, end, dur float64
+		if len(a) >= 4 {
+			_ = json.Unmarshal(a[0], &p)
+			_ = json.Unmarshal(a[1], &start)
+			_ = json.Unmarshal(a[2], &end)
+			_ = json.Unmarshal(a[3], &dur)
+		}
+		f, err := shareVideoFile(p, start, end, dur)
+		if err != nil {
+			return nil, err
+		}
+		return nil, share.File(e.hwnd, f)
+	})
 	e.bindAsync("stPickFolder", func([]json.RawMessage) (any, error) {
 		return win.PickFolder(e.hwnd, "Choose the screenshots folder", output.ScreenshotsFolder(e.s.SaveFolder)), nil
 	})
@@ -364,6 +397,7 @@ func (e *editor) newSnip(kind overlay.Kind, mode overlay.Mode, delay int) (any, 
 	if mode == "" {
 		mode = overlay.Mode(e.s.Mode)
 	}
+	e.s.QuickMarkup = settings.Load(output.SettingsPath()).QuickMarkup // may be toggled in another window
 	win.ShowWindow(e.hwnd, win.SW_HIDE)
 	time.Sleep(250 * time.Millisecond) // let the desktop repaint without this window
 	var res snip.Result
@@ -389,6 +423,27 @@ func (e *editor) newSnip(kind overlay.Kind, mode overlay.Mode, delay int) (any, 
 		return snipResult{}, nil
 	}
 	e.s = settings.Load(output.SettingsPath()) // recording may have updated audio defaults
+	// Quick markup finished with Save (already saved), Share or Copy: the
+	// snip does not open here.
+	switch res.Action {
+	case overlay.ActSave:
+		return snipResult{Notice: "Snip saved"}, nil
+	case overlay.ActShare:
+		p, err := snip.ShareFile(res.Image)
+		if err != nil {
+			return nil, err
+		}
+		win.BringToFront(e.hwnd)
+		return snipResult{}, share.File(e.hwnd, p)
+	case overlay.ActCopy:
+		s := e.s
+		s.AutoCopyChanges = true
+		d, err := snip.Deliver(res.Image, s)
+		if !d.Copied {
+			return nil, err
+		}
+		return snipResult{Notice: "Snip copied to clipboard"}, nil
+	}
 	if res.Kind == overlay.KindRecord {
 		if e.s.MultipleWindows && e.hasImage {
 			exe, _ := os.Executable()

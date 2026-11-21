@@ -127,6 +127,24 @@ func (p *Path) Fill(dst *image.RGBA, c color.RGBA) {
 	z.Draw(dst, b, image.NewUniform(Premul(c)), image.Point{})
 }
 
+// Mask rasterizes the path's coverage over the area b (absolute coordinates).
+func (p *Path) Mask(b image.Rectangle) *image.Alpha {
+	m := image.NewAlpha(b)
+	if b.Empty() {
+		return m
+	}
+	z := vector.NewRasterizer(b.Dx(), b.Dy())
+	for _, poly := range p.polys {
+		z.MoveTo(float32(poly[0].X-float64(b.Min.X)), float32(poly[0].Y-float64(b.Min.Y)))
+		for _, q := range poly[1:] {
+			z.LineTo(float32(q.X-float64(b.Min.X)), float32(q.Y-float64(b.Min.Y)))
+		}
+		z.ClosePath()
+	}
+	z.Draw(m, b, image.Opaque, image.Point{})
+	return m
+}
+
 // RoundRect returns the outline of a rounded rectangle.
 func RoundRect(x, y, w, h, r float64) []Pt {
 	r = math.Min(r, math.Min(w, h)/2)
