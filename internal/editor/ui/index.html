@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Snipping Tool Enhanced</title>
+<style>
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --bar: #f3f5f9; --bar-border: #e5e7eb; --canvas: #fafbfe; --text: #1a1a1a; --muted: #616161;
+  --btn: #ffffff; --btn-border: #e0e0e0; --btn-border-bottom: #cfcfcf; --hover: rgba(0,0,0,.045); --press: rgba(0,0,0,.08);
+  --accent: #005fb8; --accent-text: #ffffff; --seg: rgba(0,0,0,.035); --sep: #e0e0e0; --disabled: #b3b3b3;
+  --flyout: #f9f9f9; --flyout-border: rgba(0,0,0,.1); --shadow: 0 8px 16px rgba(0,0,0,.14), 0 0 2px rgba(0,0,0,.08);
+  --card: #ffffff; --card-border: #e5e5e5; --page: #f3f3f3; --field: #ffffff;
+}
+:root[data-theme="dark"] {
+  --bar: #202020; --bar-border: #2d2d2d; --canvas: #1c1c1c; --text: #ffffff; --muted: #c5c5c5;
+  --btn: #2d2d2d; --btn-border: #383838; --btn-border-bottom: #303030; --hover: rgba(255,255,255,.06); --press: rgba(255,255,255,.04);
+  --accent: #60cdff; --accent-text: #000000; --seg: rgba(255,255,255,.04); --sep: #3a3a3a; --disabled: #5d5d5d;
+  --flyout: #2c2c2c; --flyout-border: rgba(0,0,0,.4); --shadow: 0 8px 16px rgba(0,0,0,.36), 0 0 2px rgba(0,0,0,.3);
+  --card: #2b2b2b; --card-border: #1d1d1d; --page: #202020; --field: #2d2d2d;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; font: 14px/20px var(--font); color: var(--text); background: var(--canvas); overflow: hidden; user-select: none; -webkit-font-smoothing: antialiased; }
+svg { width: 20px; height: 20px; flex: none; }
+.ic { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+#app { display: flex; flex-direction: column; height: 100%; }
+
+/* ---------- command bar ---------- */
+header { display: flex; align-items: center; height: 48px; padding: 0 8px 0 10px; background: var(--bar); border-bottom: 1px solid var(--bar-border); gap: 4px; flex: none; }
+.group { display: flex; align-items: center; gap: 4px; }
+.center { flex: 1; justify-content: center; min-width: 0; }
+.right { margin-left: auto; }
+button { font: inherit; color: inherit; border: 1px solid transparent; background: transparent; border-radius: 4px; height: 32px; min-width: 32px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: default; position: relative; }
+button:hover:not(:disabled) { background: var(--hover); }
+button:active:not(:disabled) { background: var(--press); }
+button:disabled { color: var(--disabled); }
+button:focus-visible { outline: 2px solid var(--text); outline-offset: 0; }
+.btn-new { background: var(--btn); border-color: var(--btn-border); border-bottom-color: var(--btn-border-bottom); padding: 0 12px 0 10px; height: 32px; }
+.btn-new:hover:not(:disabled) { background: var(--btn); filter: brightness(.98); }
+.btn-new svg { width: 16px; height: 16px; }
+.seg { display: flex; gap: 2px; padding: 2px; background: var(--seg); border: 1px solid var(--btn-border); border-radius: 6px; margin-left: 10px; }
+.seg button { height: 30px; width: 36px; }
+.seg button.on { background: var(--btn); border-color: var(--btn-border); border-bottom-color: var(--btn-border-bottom); }
+.seg button.on::after, .tool.on::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 14px; height: 3px; margin-left: -7px; border-radius: 2px; background: var(--accent); }
+.tool.on::after { display: none; }
+.ddl { padding: 0 6px 0 8px; gap: 2px; margin-left: 6px; }
+.ddl .chev { width: 12px; height: 12px; margin-left: 2px; }
+.ddl .ddl-text { font-size: 12px; color: var(--muted); margin-left: 2px; }
+.sep { width: 1px; height: 24px; background: var(--sep); margin: 0 8px; flex: none; }
+.icon-btn { width: 36px; }
+.tool { width: 36px; height: 36px; }
+.tool.on { background: var(--btn); border-color: var(--accent); }
+.tool .tchev { position: absolute; bottom: 1px; left: 50%; width: 10px; height: 10px; margin-left: -5px; display: none; }
+.tool.on .tchev { display: block; }
+.text-btn { padding: 0 10px; }
+.only-image { display: none !important; }
+body.has-image .only-image { display: inline-flex !important; }
+body.has-image .only-empty { display: none !important; }
+.sep.only-image { display: none !important; }
+body.has-image .sep.only-image { display: block !important; }
+
+/* ---------- canvas area ---------- */
+main { flex: 1; position: relative; overflow: auto; background: var(--canvas); }
+#empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; }
+#empty .line { font-size: 14px; }
+#empty b { font-weight: 600; }
+.winkey { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; margin-right: 1px; }
+#empty .hint { font-size: 12px; color: var(--muted); max-width: 440px; }
+#empty .link { color: var(--accent); text-decoration: underline; cursor: pointer; }
+body.has-image #empty { display: none; }
+#stageWrap { min-width: 100%; min-height: 100%; display: none; align-items: center; justify-content: center; padding: 32px; }
+body.has-image #stageWrap { display: flex; }
+#stage { position: relative; }
+#view { display: block; box-shadow: 0 1px 4px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.03); touch-action: none;
+  background-color: #fff; background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%);
+  background-size: 16px 16px; background-position: 0 0,0 8px,8px -8px,-8px 0; }
+#textEdit { position: absolute; display: none; border: none; outline: none; resize: none; overflow: hidden; background: transparent; padding: 0; margin: 0; white-space: pre-wrap; line-height: 1.25; caret-color: var(--accent); }
+#cropBar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: none; gap: 4px; padding: 4px; background: var(--flyout); border: 1px solid var(--flyout-border); border-radius: 8px; box-shadow: var(--shadow); z-index: 5; }
+#cropBar.show { display: flex; }
+#cropBar .apply { background: var(--accent); color: var(--accent-text); width: 40px; }
+#cropBar .apply:hover { background: var(--accent); filter: brightness(1.08); }
+#taBar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: none; gap: 2px; padding: 4px; background: var(--flyout); border: 1px solid var(--flyout-border); border-radius: 8px; box-shadow: var(--shadow); z-index: 5; align-items: center; white-space: nowrap; }
+#taBar.show { display: flex; }
+#taBar .ta-status { padding: 0 10px; font-size: 13px; color: var(--muted); }
+#taBar button { padding: 0 10px; }
+#taBar .chev-only { min-width: 24px; width: 24px; padding: 0; margin-left: -2px; }
+#cropBar .crop-hint { align-self: center; padding: 0 10px 0 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+/* ---------- flyouts and menus ---------- */
+.flyout { position: fixed; z-index: 20; background: var(--flyout); border: 1px solid var(--flyout-border); border-radius: 8px; box-shadow: var(--shadow); padding: 4px; min-width: 160px; display: none; animation: pop .12s ease-out; }
+.flyout.show { display: block; }
+@keyframes pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.mi { display: flex; align-items: center; gap: 12px; width: 100%; height: 34px; padding: 0 12px 0 10px; border-radius: 4px; justify-content: flex-start; position: relative; white-space: nowrap; }
+.mi .kb { margin-left: auto; padding-left: 24px; color: var(--muted); font-size: 12px; }
+.mi.checked::before { content: ""; position: absolute; left: 2px; top: 10px; width: 3px; height: 14px; border-radius: 2px; background: var(--accent); }
+.mi svg { width: 16px; height: 16px; }
+.mi .check { width: 16px; height: 16px; visibility: hidden; }
+.mi.ticked .check { visibility: visible; }
+.msep { height: 1px; background: var(--sep); margin: 4px -4px; }
+.fly-pad { padding: 8px; width: 264px; }
+.fly-title { font-size: 12px; color: var(--muted); margin: 4px 2px 8px; }
+.swatches { display: grid; grid-template-columns: repeat(6, 32px); gap: 8px; justify-content: space-between; }
+.sw { width: 32px; height: 32px; min-width: 0; padding: 0; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
+.sw.on { outline: 2px solid var(--text); outline-offset: 2px; }
+.sw.none { background: linear-gradient(135deg, transparent 46%, #e81123 46%, #e81123 54%, transparent 54%), var(--field); }
+.row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.row label { font-size: 12px; color: var(--muted); min-width: 64px; }
+input[type=range] { flex: 1; accent-color: var(--accent); }
+.val { width: 28px; text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.shape-kinds { display: flex; gap: 4px; }
+.shape-kinds button { width: 40px; height: 40px; border: 1px solid var(--btn-border); background: var(--btn); }
+.shape-kinds button.on { border-color: var(--accent); }
+.wide-btn { width: 100%; justify-content: flex-start; padding: 0 10px; height: 36px; margin-top: 8px; border: 1px solid var(--btn-border); background: var(--btn); }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; margin-top: 8px; }
+.emoji-grid button { font-size: 20px; height: 32px; min-width: 0; padding: 0; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+select { font: inherit; font-size: 13px; color: var(--text); background: var(--field); border: 1px solid var(--btn-border); border-bottom-color: var(--btn-border-bottom); border-radius: 4px; height: 30px; padding: 0 6px; }
+.zoomrow { display: flex; align-items: center; gap: 4px; padding: 2px 6px 2px 10px; height: 36px; }
+.zoomrow span.lbl { flex: 1; }
+.zoomrow .pct { width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* text properties bar */
+#textBar { position: fixed; z-index: 15; display: none; align-items: center; gap: 4px; padding: 4px; background: var(--flyout); border: 1px solid var(--flyout-border); border-radius: 8px; box-shadow: var(--shadow); }
+#textBar.show { display: flex; }
+#textBar .sw { width: 22px; height: 22px; }
+
+/* ---------- settings page ---------- */
+#settings { position: absolute; inset: 0; background: var(--page); overflow: auto; display: none; z-index: 10; }
+#settings.show { display: block; }
+.set-wrap { max-width: 760px; margin: 0 auto; padding: 20px 24px 40px; }
+.set-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.set-head h1 { font-size: 28px; line-height: 36px; font-weight: 600; margin: 0; }
+.set-sec { font-size: 14px; font-weight: 600; margin: 20px 0 8px; }
+.card { display: flex; align-items: center; gap: 16px; background: var(--card); border: 1px solid var(--card-border); border-radius: 6px; padding: 14px 16px; margin-bottom: 4px; min-height: 64px; }
+.card .txt { flex: 1; }
+.card .t { font-size: 14px; }
+.card .d { font-size: 12px; color: var(--muted); line-height: 16px; margin-top: 2px; }
+.card.sub { margin-left: 40px; }
+.toggle { display: inline-flex; align-items: center; gap: 12px; font-size: 14px; }
+.toggle input { appearance: none; width: 40px; height: 20px; border-radius: 10px; border: 1px solid var(--muted); position: relative; margin: 0; background: transparent; transition: .15s; }
+.toggle input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: .15s; }
+.toggle input:checked { background: var(--accent); border-color: var(--accent); }
+.toggle input:checked::after { left: 23px; background: var(--accent-text); }
+.btn { background: var(--btn); border: 1px solid var(--btn-border); border-bottom-color: var(--btn-border-bottom); padding: 0 12px; }
+.btn.accent { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+.radio { display: flex; flex-direction: column; gap: 8px; }
+.radio label { display: flex; align-items: center; gap: 8px; }
+.radio input { accent-color: var(--accent); width: 18px; height: 18px; margin: 0; }
+
+/* ---------- dialog / toast ---------- */
+#scrim { position: fixed; inset: 0; background: rgba(0,0,0,.3); display: none; align-items: center; justify-content: center; z-index: 30; }
+#scrim.show { display: flex; }
+.dialog { display: flex; flex-direction: column; max-height: calc(100vh - 16px); width: 448px; max-width: calc(100% - 32px); background: var(--flyout); border: 1px solid var(--flyout-border); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+.dialog .body { padding: 24px; overflow: auto; min-height: 0; flex: 1; }
+.dialog .foot { flex: none; }
+.dialog h2 { font-size: 20px; line-height: 28px; font-weight: 600; margin: 0 0 12px; }
+.dialog .foot { display: flex; gap: 8px; padding: 24px; background: var(--bar); border-top: 1px solid var(--bar-border); }
+.dialog .foot button { flex: 1; }
+#toast { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 12px); opacity: 0; transition: .16s; background: var(--flyout); border: 1px solid var(--flyout-border); box-shadow: var(--shadow); border-radius: 8px; padding: 10px 16px; z-index: 40; pointer-events: none; max-width: 80%; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#toast a { color: var(--accent); cursor: pointer; text-decoration: underline; margin-left: 8px; }
+#printImg { display: none; }
+/* ---------- video view ---------- */
+.only-video { display: none !important; }
+body.has-video .only-video { display: inline-flex !important; }
+body.has-video .only-image { display: none !important; }
+body.has-video .sep.only-video { display: block !important; }
+body.has-video #empty, body.has-video #stageWrap { display: none !important; }
+body.has-video .only-empty { display: none !important; }
+#videoWrap { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; }
+body.has-video #videoWrap { display: flex; }
+#vid { max-width: 100%; max-height: calc(100% - 90px); background: #000; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+#trimBar { display: none; width: min(900px, 100%); align-items: center; gap: 12px; }
+#trimBar.show { display: flex; }
+#trimTrack { position: relative; flex: 1; height: 36px; border-radius: 6px; background: var(--seg); border: 1px solid var(--btn-border); touch-action: none; }
+#trimSel { position: absolute; top: -1px; bottom: -1px; border: 2px solid var(--accent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.trimHandle { position: absolute; top: 3px; bottom: 3px; width: 10px; margin-left: -5px; border-radius: 4px; background: var(--accent); cursor: ew-resize; }
+#trimHead { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); pointer-events: none; }
+.tlabel { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 52px; text-align: center; }
+.gif-info { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 13px; margin: 10px 2px; }
+.gif-info span:nth-child(odd) { color: var(--muted); }
+.qual { display: flex; gap: 4px; }
+.qual button { flex: 1; border: 1px solid var(--btn-border); background: var(--btn); }
+.qual button.on { border-color: var(--accent); color: var(--accent); }
+.fly-actions { display: flex; gap: 8px; margin-top: 12px; }
+.fly-actions button { flex: 1; }
+.progress { height: 4px; border-radius: 2px; background: var(--seg); margin-top: 12px; overflow: hidden; display: none; }
+.progress.show { display: block; }
+.progress div { height: 100%; width: 0; background: var(--accent); transition: width .1s; }
+@media print {
+  #app, #toast, .flyout, #scrim, #textBar { display: none !important; }
+  html, body { background: #fff; overflow: visible; }
+  #printImg { display: block; max-width: 100%; max-height: 100vh; margin: 0 auto; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-add" viewBox="0 0 20 20"><path class="ic" d="M10 4v12M4 10h12"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 20 20"><path class="ic" d="M4.5 6.5h2l1.2-1.8h4.6l1.2 1.8h2a1.5 1.5 0 0 1 1.5 1.5v6.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5V8a1.5 1.5 0 0 1 1.5-1.5z"/><circle class="ic" cx="10" cy="11" r="2.8"/></symbol>
+    <symbol id="i-video" viewBox="0 0 20 20"><rect class="ic" x="2.5" y="5.5" width="10.5" height="9" rx="1.8"/><path class="ic" d="M13 8.8l4.2-2.3v7l-4.2-2.3"/></symbol>
+    <symbol id="i-mode-rectangle" viewBox="0 0 20 20"><path class="ic" d="M11 15.5H5A1.5 1.5 0 0 1 3.5 14V6A1.5 1.5 0 0 1 5 4.5h10A1.5 1.5 0 0 1 16.5 6v4"/><path class="ic" d="M15 12.5v4M13 14.5h4"/></symbol>
+    <symbol id="i-mode-square" viewBox="0 0 20 20"><rect class="ic" x="4" y="4" width="12" height="12" rx="1.5"/></symbol>
+    <symbol id="i-mode-freeform" viewBox="0 0 20 20"><path class="ic" d="M6 5.5c2.5-1.8 6.8-1.3 8.6 1 1.8 2.3.6 5-1.5 5.8-2 .8-1.2 3.3-3.8 3.6-3 .4-5.9-1.9-5.6-5.1.2-2.1.9-4.1 2.3-5.3z"/></symbol>
+    <symbol id="i-mode-window" viewBox="0 0 20 20"><rect class="ic" x="3" y="4" width="14" height="12" rx="1.5"/><path class="ic" d="M3 7.5h14"/></symbol>
+    <symbol id="i-mode-fullscreen" viewBox="0 0 20 20"><rect class="ic" x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path class="ic" d="M7 16.5h6M10 13.5v3"/></symbol>
+    <symbol id="i-timer-off" viewBox="0 0 20 20"><circle class="ic" cx="10" cy="11" r="6"/><path class="ic" d="M8.5 3h3M10 3v2M3.5 4.5l13 13"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 20 20"><circle class="ic" cx="10" cy="11" r="6"/><path class="ic" d="M8.5 3h3M10 3v2M10 11V8M14.6 5.6l1-1"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 20 20"><path class="ic" d="M3.5 7V5A1.5 1.5 0 0 1 5 3.5h2M13 3.5h2A1.5 1.5 0 0 1 16.5 5v2M16.5 13v2a1.5 1.5 0 0 1-1.5 1.5h-2M7 16.5H5A1.5 1.5 0 0 1 3.5 15v-2M7 8h6M7 10.5h6M7 13h3.5"/></symbol>
+    <symbol id="i-more" viewBox="0 0 20 20"><circle cx="4.5" cy="10" r="1.2" fill="currentColor"/><circle cx="10" cy="10" r="1.2" fill="currentColor"/><circle cx="15.5" cy="10" r="1.2" fill="currentColor"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 12 12"><path class="ic" d="M3 4.5l3 3 3-3"/></symbol>
+    <symbol id="i-eraser" viewBox="0 0 20 20"><path class="ic" d="M8.2 16.5h8M3.9 12.6l7.7-7.7a1.5 1.5 0 0 1 2.1 0l2.4 2.4a1.5 1.5 0 0 1 0 2.1l-6.6 6.6a1.5 1.5 0 0 1-1.1.5H7.4a1.5 1.5 0 0 1-1-.4l-2.5-2.5a.7.7 0 0 1 0-1zM8 8.5l4.5 4.5"/></symbol>
+    <symbol id="i-shapes" viewBox="0 0 20 20"><rect class="ic" x="3" y="3" width="8.5" height="8.5" rx="1.2"/><circle class="ic" cx="12.5" cy="12.5" r="4.5"/></symbol>
+    <symbol id="i-crop" viewBox="0 0 20 20"><path class="ic" d="M5.5 2.5v10a2 2 0 0 0 2 2h10M2.5 5.5h10a2 2 0 0 1 2 2v10"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 20 20"><path class="ic" d="M7 4.5L3.5 8 7 11.5M3.5 8H12a4.5 4.5 0 0 1 0 9H9"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 20 20"><path class="ic" d="M13 4.5L16.5 8 13 11.5M16.5 8H8a4.5 4.5 0 0 0 0 9h3"/></symbol>
+    <symbol id="i-save" viewBox="0 0 20 20"><path class="ic" d="M4.5 3.5h9l3 3v9a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1z"/><path class="ic" d="M7 3.5v3.5h5.5V3.5M6.5 16.5v-5h7v5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 20 20"><rect class="ic" x="7" y="7" width="9.5" height="9.5" rx="1.5"/><path class="ic" d="M13 7V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v6.5A1.5 1.5 0 0 0 5 13h2"/></symbol>
+    <symbol id="i-share" viewBox="0 0 20 20"><path class="ic" d="M8 6.5H5A1.5 1.5 0 0 0 3.5 8v7A1.5 1.5 0 0 0 5 16.5h10a1.5 1.5 0 0 0 1.5-1.5v-3M12.5 3.5l4 3.5-4 3.5M16.5 7H13a5 5 0 0 0-5 5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 20 20"><path class="ic" d="M3 6a1.5 1.5 0 0 1 1.5-1.5h3.2l1.6 1.6h6.2A1.5 1.5 0 0 1 17 7.6V14a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14z"/></symbol>
+    <symbol id="i-print" viewBox="0 0 20 20"><path class="ic" d="M6 7.5V3.5h8v4M6 14H4.5A1.5 1.5 0 0 1 3 12.5V9a1.5 1.5 0 0 1 1.5-1.5h11A1.5 1.5 0 0 1 17 9v3.5a1.5 1.5 0 0 1-1.5 1.5H14M6 11.5h8v5H6z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 20 20"><circle class="ic" cx="10" cy="10" r="2.5"/><path class="ic" d="M10 2.8l1.4 1.9 2.3-.4.8 2.2 2.2.8-.4 2.3 1.9 1.4-1.9 1.4.4 2.3-2.2.8-.8 2.2-2.3-.4L10 17.2l-1.4-1.9-2.3.4-.8-2.2-2.2-.8.4-2.3L1.8 10l1.9-1.4-.4-2.3 2.2-.8.8-2.2 2.3.4z"/></symbol>
+    <symbol id="i-ruler" viewBox="0 0 20 20"><path class="ic" d="M2.8 13.2l10.4-10.4 4 4L6.8 17.2z M6 10l1.5 1.5M8.5 7.5l1.5 1.5M11 5l1.5 1.5"/></symbol>
+    <symbol id="i-protractor" viewBox="0 0 20 20"><path class="ic" d="M2.5 14.5a7.5 7.5 0 0 1 15 0zM10 14.5V11M6 10.5l1.2 1.2M14 10.5l-1.2 1.2"/></symbol>
+    <symbol id="i-touch" viewBox="0 0 20 20"><path class="ic" d="M8 10V4.5a1.3 1.3 0 0 1 2.6 0V9l3.4.6a2 2 0 0 1 1.6 2.3l-.7 4.1H8.6L5.4 12.6a1.2 1.2 0 0 1 1.8-1.6z"/></symbol>
+    <symbol id="i-text" viewBox="0 0 20 20"><path class="ic" d="M4 16l5-12h2l5 12M6.2 11h7.6"/></symbol>
+    <symbol id="i-emoji" viewBox="0 0 20 20"><circle class="ic" cx="10" cy="10" r="7"/><path class="ic" d="M7 12c1.6 2 4.4 2 6 0"/><circle cx="7.5" cy="8.3" r=".9" fill="currentColor"/><circle cx="12.5" cy="8.3" r=".9" fill="currentColor"/></symbol>
+    <symbol id="i-line" viewBox="0 0 20 20"><path class="ic" d="M4 16L16 4"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path class="ic" d="M4 16L16 4M9 4h7v7"/></symbol>
+    <symbol id="i-rect" viewBox="0 0 20 20"><rect class="ic" x="3" y="5" width="14" height="10" rx="1"/></symbol>
+    <symbol id="i-oval" viewBox="0 0 20 20"><ellipse class="ic" cx="10" cy="10" rx="7" ry="5.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path class="ic" d="M4 10.5l4 4 8-8.5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 20 20"><path class="ic" d="M5 5l10 10M15 5L5 15"/></symbol>
+    <symbol id="i-back" viewBox="0 0 20 20"><path class="ic" d="M9 4.5L3.5 10 9 15.5M3.5 10h13"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 20 20"><path class="ic" d="M5 10h10"/></symbol>
+    <symbol id="i-open" viewBox="0 0 20 20"><path class="ic" d="M3 15V6a1.5 1.5 0 0 1 1.5-1.5h3.2l1.6 1.6h5.2A1.5 1.5 0 0 1 16 7.6V8.5M3 15l2.2-5.6A1.5 1.5 0 0 1 6.6 8.5h10.2l-2.3 6.5z"/></symbol>
+    <symbol id="i-trim" viewBox="0 0 20 20"><circle class="ic" cx="5.5" cy="5.5" r="2.5"/><circle class="ic" cx="5.5" cy="14.5" r="2.5"/><path class="ic" d="M7.5 7l9.5 8M7.5 13l9.5-8"/></symbol>
+    <symbol id="i-gif" viewBox="0 0 20 20"><rect class="ic" x="2.5" y="4.5" width="15" height="11" rx="2"/><path class="ic" d="M8 8.2H6.6a1 1 0 0 0-1 1v1.6a1 1 0 0 0 1 1H8V10H7M10 8.2v3.6M12.3 11.8V8.2h2.2M12.3 10h1.7"/></symbol>
+    <symbol id="i-bold" viewBox="0 0 20 20"><path class="ic" style="stroke-width:1.8" d="M6 4h5a3 3 0 0 1 0 6H6zM6 10h6a3 3 0 0 1 0 6H6z"/></symbol>
+  </defs>
+</svg>
+
+<div id="app">
+  <header id="bar">
+    <div class="group left">
+      <button id="btnNew" class="btn-new" title="New snip (Ctrl+N)"><svg><use href="#i-add"/></svg>New</button>
+      <div class="seg" role="radiogroup" aria-label="Capture type">
+        <button id="segSnip" class="on" role="radio" aria-checked="true" title="Snip"><svg><use href="#i-camera"/></svg></button>
+        <button id="segRec" role="radio" aria-checked="false" title="Record"><svg><use href="#i-video"/></svg></button>
+      </div>
+      <button id="btnMode" class="ddl" title="Snipping mode (Alt+M)"><svg id="modeIcon"><use href="#i-mode-rectangle"/></svg><svg class="chev"><use href="#i-chev"/></svg></button>
+      <button id="btnDelay" class="ddl" title="Snip delay (Alt+D)"><svg id="delayIcon"><use href="#i-timer-off"/></svg><span id="delayText" class="ddl-text"></span><svg class="chev"><use href="#i-chev"/></svg></button>
+      <div class="sep only-empty"></div>
+      <button id="btnTextExtractor" class="icon-btn only-empty" title="Text Extractor: select an area to copy its text"><svg><use href="#i-scan"/></svg></button>
+    </div>
+    <div class="group center only-image" id="tools">
+      <button class="tool" data-tool="pen" title="Ballpoint pen"><svg viewBox="0 0 20 20"><path class="ic" d="M6.8 3.5h6.4l1.3 4.3L10 17 5.5 7.8z"/><path id="penTip" d="M7.6 9.4h4.8L10 15.2z" fill="#e61b1b" stroke="none"/></svg><svg class="tchev"><use href="#i-chev"/></svg></button>
+      <button class="tool" data-tool="highlighter" title="Highlighter"><svg viewBox="0 0 20 20"><path class="ic" d="M6.5 2.5h7v5h-7zM6.5 7.5l1 3h5l1-3"/><path id="hlTip" d="M7.6 10.6h4.8L11.4 16l-2.8 1.2z" fill="#ffe600" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg><svg class="tchev"><use href="#i-chev"/></svg></button>
+      <button class="tool" data-tool="eraser" title="Eraser"><svg><use href="#i-eraser"/></svg><svg class="tchev"><use href="#i-chev"/></svg></button>
+      <button class="tool" data-tool="shapes" title="Shapes, text and emoji"><svg><use href="#i-shapes"/></svg><svg class="tchev"><use href="#i-chev"/></svg></button>
+      <div class="sep"></div>
+      <button class="tool" data-tool="crop" title="Image crop"><svg><use href="#i-crop"/></svg></button>
+      <button id="btnTextActions" class="tool" title="Text actions"><svg><use href="#i-scan"/></svg></button>
+      <div class="sep"></div>
+      <button id="btnUndo" class="icon-btn" disabled title="Undo (Ctrl+Z)"><svg><use href="#i-undo"/></svg></button>
+      <button id="btnRedo" class="icon-btn" disabled title="Redo (Ctrl+Y)"><svg><use href="#i-redo"/></svg></button>
+    </div>
+    <div class="group center only-video" id="videoTools">
+      <button class="tool" id="btnTrim" title="Trim"><svg><use href="#i-trim"/></svg></button>
+    </div>
+    <div class="group right">
+      <button id="btnGif" class="text-btn only-video" title="Export as GIF"><svg><use href="#i-gif"/></svg>GIF</button>
+      <button id="btnSaveVideo" class="icon-btn only-video" title="Save as (Ctrl+S)"><svg><use href="#i-save"/></svg></button>
+      <button id="btnShareVideo" class="icon-btn only-video" disabled title="Share – not available in this version yet"><svg><use href="#i-share"/></svg></button>
+      <div class="sep only-video"></div>
+      <button id="btnPaint" class="text-btn only-image" title="Edit in Paint">
+        <svg viewBox="0 0 20 20"><path d="M10 2.5a7.5 7.5 0 0 0 0 15c1.2 0 1.6-.8 1.3-1.6-.4-1 .3-2 1.4-2H15a2.5 2.5 0 0 0 2.5-2.5A7.5 7.5 0 0 0 10 2.5z" fill="#f2c987" stroke="#9a6b2f" stroke-width=".8"/><circle cx="6.3" cy="9" r="1.4" fill="#e81123"/><circle cx="8.6" cy="5.8" r="1.4" fill="#0078d4"/><circle cx="12.4" cy="5.9" r="1.4" fill="#16c60c"/><circle cx="14.6" cy="9" r="1.3" fill="#ffb900"/></svg>Edit in Paint</button>
+      <button id="btnSave" class="icon-btn only-image" title="Save as (Ctrl+S)"><svg><use href="#i-save"/></svg></button>
+      <button id="btnCopy" class="icon-btn only-image" title="Copy (Ctrl+C)"><svg><use href="#i-copy"/></svg></button>
+      <button id="btnShare" class="icon-btn only-image" disabled title="Share – not available in this version yet"><svg><use href="#i-share"/></svg></button>
+      <div class="sep only-image"></div>
+      <button id="btnMore" class="icon-btn" title="See more"><svg><use href="#i-more"/></svg></button>
+    </div>
+  </header>
+  <main id="main">
+    <div id="empty">
+      <div class="line" id="emptyLine"></div>
+      <div class="hint" id="emptyHint"></div>
+    </div>
+    <div id="stageWrap"><div id="stage"><canvas id="view"></canvas><textarea id="textEdit" spellcheck="false"></textarea></div></div>
+    <div id="videoWrap">
+      <video id="vid" controls crossorigin="anonymous" preload="metadata"></video>
+      <div id="trimBar"><span class="tlabel" id="trimStartL">0:00</span><div id="trimTrack"><div id="trimSel"></div><div class="trimHandle" id="trimA"></div><div class="trimHandle" id="trimB"></div><div id="trimHead"></div></div><span class="tlabel" id="trimEndL">0:00</span></div>
+    </div>
+    <div id="taBar" role="toolbar" aria-label="Text actions">
+      <span class="ta-status" id="taStatus"></span>
+      <button id="taCopyAll" title="Copy all text (Ctrl+A, Ctrl+C)"><svg><use href="#i-copy"/></svg>Copy all text</button>
+      <button id="taTable" title="Copy as table (tab-separated, for Excel or Word)">Copy as table</button>
+      <button id="taRedact" title="Black out email addresses and phone numbers">Quick redact</button><button id="taRedactMenu" class="chev-only" title="Quick redact options"><svg class="chev" style="width:12px;height:12px"><use href="#i-chev"/></svg></button>
+      <button id="taRedactSel" title="Black out the selected text">Redact selection</button>
+      <div class="sep"></div>
+      <button id="taClose" title="Close text actions (Esc)" style="width:32px;padding:0"><svg><use href="#i-close"/></svg></button>
+    </div>
+    <div id="cropBar"><span class="crop-hint">Drag the handles, or draw the area to keep · Shift keeps it square</span><button class="apply" id="cropApply" title="Apply (Enter)"><svg><use href="#i-check"/></svg></button><button id="cropCancel" title="Cancel (Esc)"><svg><use href="#i-close"/></svg></button></div>
+    <section id="settings" aria-label="Settings"></section>
+  </main>
+</div>
+
+<div id="flyout" class="flyout" role="menu"></div>
+<div id="textBar"></div>
+<div id="scrim"><div class="dialog" role="dialog" aria-modal="true"><div class="body"><h2 id="dlgTitle"></h2><div id="dlgText"></div></div><div class="foot" id="dlgFoot"></div></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<img id="printImg" alt="">
+
+<script>
+"use strict";
+/* =====================================================================
+   Host bridge. Sync calls map to Go bindings; async ones resolve through
+   window.stDone(id, result, error) because they open dialogs or the
+   capture overlay outside WebView2's event handler.
+   ===================================================================== */
+const pending = new Map(); let nextId = 1;
+window.stDone = (id, res, err) => { const p = pending.get(id); if (!p) return; pending.delete(id); err ? p.reject(err) : p.resolve(res); };
+function callAsync(name, ...args) {
+  if (!window[name]) return Promise.resolve(null);
+  return new Promise((resolve, reject) => { const id = nextId++; pending.set(id, { resolve, reject }); window[name](id, ...args).catch(reject); });
+}
+const call = (name, ...args) => window[name] ? window[name](...args) : Promise.resolve(null);
+
+/* ===================================================================== state */
+const $ = (id) => document.getElementById(id);
+const view = $("view"), ctx = view.getContext("2d"), main = $("main");
+const PEN_COLORS = ["#000000","#ffffff","#d1d3d4","#a7a9ac","#808285","#58595b","#b31564","#e61b1b","#ff5500","#ffaa00","#ffce00","#ffe600",
+  "#a2e61b","#26e600","#008055","#00aacc","#004de6","#3d00b8","#6600cc","#600080","#f7d7c4","#bb9167","#8e562e","#613d30",
+  "#ff80ff","#ffc680","#ffff80","#80ff9e","#80d6ff","#bcb3ff"];
+const HL_COLORS = ["#ffe600","#26e600","#44c8f5","#ff80ff","#ff8000","#bcb3ff"];
+const SHAPE_COLORS = ["#000000","#ffffff","#e61b1b","#ff5500","#ffce00","#26e600","#00aacc","#004de6","#6600cc","#b31564","#808285","#8e562e"];
+const EMOJI = ["😀","😂","😊","😍","🤔","😮","😢","😡","👍","👎","👏","🙏","💪","👀","👉","👈","👆","👇","✅","❌","⚠️","❗","❓","💡","⭐","🔥","🎉","❤️","💯","📌","📎","🔍","🖱️","⌨️","💻","📷","📝","📅","⏰","🚀","🐛","🔒","🔑","📧","☎️","🏠","➡️","⬅️"];
+const MODES = [
+  { id: "rectangle", label: "Rectangle", icon: "i-mode-rectangle" },
+  { id: "square", label: "Square", icon: "i-mode-square" },
+  { id: "window", label: "Window", icon: "i-mode-window" },
+  { id: "fullscreen", label: "Full screen", icon: "i-mode-fullscreen" },
+  { id: "freeform", label: "Freeform", icon: "i-mode-freeform" },
+];
+const RECORD_MODES = ["rectangle", "window"];
+const modesFor = (kind) => kind === "record" ? MODES.filter(m => RECORD_MODES.includes(m.id)) : MODES;
+const DELAYS = [0, 3, 5, 10];
+
+const S = {
+  settings: null, img: null, w: 0, h: 0, name: "",
+  objects: [], crop: null,
+  tool: null,
+  pen: { color: "#e61b1b", size: 4 }, hl: { color: "#ffe600", size: 16 },
+  shape: { kind: "rect", stroke: "#e61b1b", fill: null, width: 4 },
+  textStyle: { font: "Segoe UI", size: 32, color: "#000000", bg: null, bold: false },
+  zoom: 1, fit: true, dpr: window.devicePixelRatio || 1,
+  draft: null, holdTimer: 0, snapped: false,
+  sel: -1, drag: null,
+  erasing: false, erased: false,
+  cropping: null,
+  ruler: null, protractor: null, touchWriting: false,
+  history: [], hIndex: -1, savedIndex: 0, copyTimer: 0,
+  editingText: -1,
+};
+
+/* ===================================================================== geometry */
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function distToSeg(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+  let t = l2 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+function bbox(o) {
+  if (o.type === "stroke") { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const p of o.points) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); } return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }; }
+  if (o.type === "shape") return { x: Math.min(o.x1, o.x2), y: Math.min(o.y1, o.y2), w: Math.abs(o.x2 - o.x1), h: Math.abs(o.y2 - o.y1) };
+  return { x: o.x, y: o.y, w: o.w, h: o.h };
+}
+function shapePts(o) {
+  const { x1, y1, x2, y2 } = o;
+  if (o.kind === "rect") return [{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2},{x:x1,y:y1}];
+  if (o.kind === "oval") { const cx=(x1+x2)/2, cy=(y1+y2)/2, rx=Math.abs(x2-x1)/2, ry=Math.abs(y2-y1)/2, p=[]; for (let i=0;i<=64;i++){const a=i/64*Math.PI*2;p.push({x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a)});} return p; }
+  return [{x:x1,y:y1},{x:x2,y:y2}];
+}
+function hitObject(o, p, tol) {
+  if (o.type === "stroke" || o.type === "shape") {
+    const pts = o.type === "stroke" ? o.points : shapePts(o), r = (o.size || o.width) / 2 + tol;
+    if (o.type === "shape" && o.fill && (o.kind === "rect" || o.kind === "oval")) { const b = bbox(o); if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) return true; }
+    if (pts.length === 1) return dist(p, pts[0]) <= r;
+    for (let i = 1; i < pts.length; i++) if (distToSeg(p, pts[i - 1], pts[i]) <= r) return true;
+    return false;
+  }
+  const b = bbox(o); return p.x >= b.x - tol && p.x <= b.x + b.w + tol && p.y >= b.y - tol && p.y <= b.y + b.h + tol;
+}
+const movable = (o) => o && o.type !== "stroke" && o.type !== "redact";
+
+/* Draw & Hold shape recognition (white paper §5). */
+function rdp(pts, eps) {
+  if (pts.length < 3) return pts.slice();
+  let idx = 0, md = 0;
+  for (let i = 1; i < pts.length - 1; i++) { const d = distToSeg(pts[i], pts[0], pts[pts.length - 1]); if (d > md) { md = d; idx = i; } }
+  if (md <= eps) return [pts[0], pts[pts.length - 1]];
+  return rdp(pts.slice(0, idx + 1), eps).slice(0, -1).concat(rdp(pts.slice(idx), eps));
+}
+function recognize(points) {
+  if (points.length < 4) return null;
+  let L = 0; for (let i = 1; i < points.length; i++) L += dist(points[i - 1], points[i]);
+  if (L < 24) return null;
+  const a = points[0], z = points[points.length - 1];
+  const b = bbox({ type: "stroke", points }), diag = Math.hypot(b.w, b.h);
+  if (dist(a, z) < Math.max(18, 0.22 * L) && L > 2.2 * diag * 0.6) {
+    // Closed: rectangle if the outline has ~4 corners, otherwise oval.
+    const simple = rdp(points, diag * 0.07);
+    const corners = simple.length - 1;
+    const kind = corners >= 3 && corners <= 6 ? "rect" : "oval";
+    return { kind, x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h };
+  }
+  if (dist(a, z) / L > 0.88) return { kind: "line", x1: a.x, y1: a.y, x2: z.x, y2: z.y };
+  // Arrow: the point farthest from the start is the tip; what follows is a short head.
+  let ti = 0, td = 0; points.forEach((p, i) => { const d = dist(a, p); if (d > td) { td = d; ti = i; } });
+  let shaft = 0; for (let i = 1; i <= ti; i++) shaft += dist(points[i - 1], points[i]);
+  const tip = points[ti];
+  if (ti > 2 && ti < points.length - 2 && dist(a, tip) / shaft > 0.85 && (L - shaft) < 0.6 * shaft && (L - shaft) > 0.08 * shaft)
+    return { kind: "arrow", x1: a.x, y1: a.y, x2: tip.x, y2: tip.y };
+  return null;
+}
+
+/* ===================================================================== drawing */
+function wrapLines(c, o) {
+  c.font = `${o.bold ? "600 " : ""}${o.size}px "${o.font}"`;
+  const out = [];
+  for (const para of (o.text || "").split("\n")) {
+    let line = "";
+    for (const word of para.split(/(\s+)/)) {
+      const t = line + word;
+      if (c.measureText(t).width > o.w && line.trim()) { out.push(line.replace(/\s+$/, "")); line = word.replace(/^\s+/, ""); }
+      else line = t;
+    }
+    out.push(line);
+  }
+  return out;
+}
+function drawObject(c, o) {
+  c.save();
+  c.lineCap = "round"; c.lineJoin = "round";
+  if (o.type === "stroke") {
+    const p = o.points;
+    c.strokeStyle = o.color; c.fillStyle = o.color; c.lineWidth = o.size;
+    if (o.hl) { c.globalAlpha = 0.45; c.globalCompositeOperation = "multiply"; c.lineCap = "square"; }
+    c.beginPath();
+    if (p.length === 1) { c.arc(p[0].x, p[0].y, o.size / 2, 0, Math.PI * 2); c.fill(); }
+    else { c.moveTo(p[0].x, p[0].y); for (let i = 1; i < p.length - 1; i++) c.quadraticCurveTo(p[i].x, p[i].y, (p[i].x + p[i + 1].x) / 2, (p[i].y + p[i + 1].y) / 2); c.lineTo(p[p.length - 1].x, p[p.length - 1].y); c.stroke(); }
+  } else if (o.type === "shape") {
+    const { x1, y1, x2, y2 } = o;
+    if (o.hl) { c.globalAlpha = 0.45; c.globalCompositeOperation = "multiply"; }
+    c.strokeStyle = o.stroke; c.lineWidth = o.width; c.fillStyle = o.fill || "transparent";
+    c.beginPath();
+    if (o.kind === "rect") { c.rect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); if (o.fill) c.fill(); c.stroke(); }
+    else if (o.kind === "oval") { c.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2 || .1, Math.abs(y2 - y1) / 2 || .1, 0, 0, Math.PI * 2); if (o.fill) c.fill(); c.stroke(); }
+    else {
+      const ang = Math.atan2(y2 - y1, x2 - x1), head = o.kind === "arrow" ? Math.max(12, o.width * 3.5) : 0;
+      c.moveTo(x1, y1); c.lineTo(x2 - Math.cos(ang) * head * .55, y2 - Math.sin(ang) * head * .55); c.stroke();
+      if (head) { c.fillStyle = o.stroke; c.beginPath(); c.moveTo(x2, y2); c.lineTo(x2 - head * Math.cos(ang - .42), y2 - head * Math.sin(ang - .42)); c.lineTo(x2 - head * Math.cos(ang + .42), y2 - head * Math.sin(ang + .42)); c.closePath(); c.fill(); }
+    }
+  } else if (o.type === "text") {
+    const lines = wrapLines(c, o), lh = o.size * 1.25;
+    o.h = Math.max(lh, lines.length * lh);
+    if (o.bg) { c.fillStyle = o.bg; c.fillRect(o.x - 4, o.y - 2, o.w + 8, o.h + 4); }
+    if (S.editingText < 0 || S.objects[S.editingText] !== o) {
+      c.fillStyle = o.color; c.textBaseline = "top";
+      lines.forEach((l, i) => c.fillText(l, o.x, o.y + i * lh + o.size * 0.1));
+    }
+  } else if (o.type === "redact") {
+    c.fillStyle = "#000"; c.fillRect(o.x, o.y, o.w, o.h);
+  } else if (o.type === "emoji") {
+    c.font = `${o.h * 0.86}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+    c.textBaseline = "middle"; c.textAlign = "center";
+    c.fillText(o.char, o.x + o.w / 2, o.y + o.h / 2 + o.h * 0.04);
+  }
+  c.restore();
+}
+const currentCrop = () => S.crop || { x: 0, y: 0, w: S.w, h: S.h };
+function renderInto(c, crop) {
+  c.clearRect(0, 0, crop.w, crop.h);
+  c.drawImage(S.img, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+  c.save(); c.translate(-crop.x, -crop.y);
+  for (const o of S.objects) drawObject(c, o);
+  c.restore();
+}
+const unit = () => S.dpr / S.zoom; // image pixels per device pixel
+
+function handlesOf(o) {
+  if (o.type === "shape" && (o.kind === "line" || o.kind === "arrow")) return [{ id: "p1", x: o.x1, y: o.y1 }, { id: "p2", x: o.x2, y: o.y2 }];
+  const b = bbox(o), xs = [b.x, b.x + b.w / 2, b.x + b.w], ys = [b.y, b.y + b.h / 2, b.y + b.h], ids = [["nw","n","ne"],["w","","e"],["sw","s","se"]], out = [];
+  for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) if (ids[r][k]) out.push({ id: ids[r][k], x: xs[k], y: ys[r] });
+  return out;
+}
+function drawHandles(c, pts, rect) {
+  const u = unit();
+  c.save();
+  if (rect) { c.strokeStyle = "#005fb8"; c.lineWidth = 1 * u; c.setLineDash([4 * u, 3 * u]); c.strokeRect(rect.x, rect.y, rect.w, rect.h); c.setLineDash([]); }
+  for (const h of pts) { c.beginPath(); c.arc(h.x, h.y, 5 * u, 0, Math.PI * 2); c.fillStyle = "#fff"; c.fill(); c.lineWidth = 1.5 * u; c.strokeStyle = "#005fb8"; c.stroke(); }
+  c.restore();
+}
+
+function render() {
+  if (!S.img) return;
+  const crop = S.cropping ? { x: 0, y: 0, w: S.w, h: S.h } : currentCrop();
+  if (view.width !== crop.w || view.height !== crop.h) { view.width = crop.w; view.height = crop.h; layout(); }
+  renderInto(ctx, crop);
+  ctx.save(); ctx.translate(-crop.x, -crop.y);
+  if (S.draft) drawObject(ctx, S.draft);
+  const o = S.objects[S.sel];
+  if (o && S.editingText < 0) drawHandles(ctx, handlesOf(o), o.type === "shape" && (o.kind === "line" || o.kind === "arrow") ? null : bbox(o));
+  if (S.textMode && S.ocr) drawWords(ctx);
+  if (S.ruler) drawRuler(ctx, S.ruler);
+  if (S.protractor) drawProtractor(ctx, S.protractor);
+  if (S.cropping) drawCropFrame(ctx, S.cropping);
+  ctx.restore();
+}
+
+/* Ruler and protractor (white paper §5): guides that straight strokes snap to. */
+function rulerEdge(r) { const c = Math.cos(r.a), s = Math.sin(r.a), nx = s, ny = -c; const ox = r.cx + nx * r.t / 2, oy = r.cy + ny * r.t / 2; return { a: { x: ox - c * r.len / 2, y: oy - s * r.len / 2 }, b: { x: ox + c * r.len / 2, y: oy + s * r.len / 2 }, dir: { x: c, y: s } }; }
+function drawRuler(c, r) {
+  const u = unit();
+  c.save(); c.translate(r.cx, r.cy); c.rotate(r.a);
+  c.fillStyle = "rgba(245,245,245,.92)"; c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = u;
+  c.fillRect(-r.len / 2, -r.t / 2, r.len, r.t); c.strokeRect(-r.len / 2, -r.t / 2, r.len, r.t);
+  c.strokeStyle = "rgba(0,0,0,.6)"; c.fillStyle = "rgba(0,0,0,.7)"; c.font = `${11 * u}px Segoe UI`; c.textAlign = "center";
+  const step = 10;
+  for (let x = -Math.floor(r.len / 2 / step) * step, i = 0; x <= r.len / 2; x += step, i++) {
+    const big = Math.round(x / step) % 10 === 0, mid = Math.round(x / step) % 5 === 0;
+    const l = big ? r.t * .35 : mid ? r.t * .25 : r.t * .14;
+    c.beginPath(); c.moveTo(x, -r.t / 2); c.lineTo(x, -r.t / 2 + l); c.stroke();
+    if (big) c.fillText(String(Math.round((x + r.len / 2) / 10)), x, -r.t / 2 + l + 12 * u);
+  }
+  c.font = `600 ${13 * u}px Segoe UI`;
+  let deg = Math.round((r.a * 180 / Math.PI) % 180); if (deg < 0) deg += 180;
+  c.fillText(deg + "°", 0, r.t / 2 - 8 * u);
+  c.restore();
+}
+function drawProtractor(c, p) {
+  const u = unit();
+  c.save(); c.translate(p.cx, p.cy); c.rotate(p.a);
+  c.beginPath(); c.arc(0, 0, p.r, Math.PI, 0); c.closePath();
+  c.fillStyle = "rgba(245,245,245,.88)"; c.fill(); c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = u; c.stroke();
+  c.strokeStyle = "rgba(0,0,0,.6)"; c.fillStyle = "rgba(0,0,0,.7)"; c.font = `${10 * u}px Segoe UI`; c.textAlign = "center"; c.textBaseline = "middle";
+  for (let d = 0; d <= 180; d += 5) {
+    const a = Math.PI + d * Math.PI / 180, l = d % 30 === 0 ? 16 * u : d % 10 === 0 ? 11 * u : 6 * u;
+    c.beginPath(); c.moveTo(Math.cos(a) * p.r, Math.sin(a) * p.r); c.lineTo(Math.cos(a) * (p.r - l), Math.sin(a) * (p.r - l)); c.stroke();
+    if (d % 30 === 0) c.fillText(String(d), Math.cos(a) * (p.r - 28 * u), Math.sin(a) * (p.r - 28 * u));
+  }
+  c.beginPath(); c.arc(0, 0, 3 * u, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+function inRuler(r, p) { const c = Math.cos(-r.a), s = Math.sin(-r.a), dx = p.x - r.cx, dy = p.y - r.cy; const x = dx * c - dy * s, y = dx * s + dy * c; return Math.abs(x) <= r.len / 2 && Math.abs(y) <= r.t / 2; }
+function inProtractor(p, q) { const c = Math.cos(-p.a), s = Math.sin(-p.a), dx = q.x - p.cx, dy = q.y - p.cy; const x = dx * c - dy * s, y = dx * s + dy * c; return y <= 0 && Math.hypot(x, y) <= p.r; }
+function snapStroke(points) {
+  const tol = 28 * unit();
+  if (S.ruler) {
+    const e = rulerEdge(S.ruler);
+    if (distToSeg(points[0], e.a, e.b) < tol) {
+      const proj = points.map(p => (p.x - e.a.x) * e.dir.x + (p.y - e.a.y) * e.dir.y);
+      const t0 = Math.min(...proj), t1 = Math.max(...proj);
+      return [{ x: e.a.x + e.dir.x * t0, y: e.a.y + e.dir.y * t0 }, { x: e.a.x + e.dir.x * t1, y: e.a.y + e.dir.y * t1 }];
+    }
+  }
+  if (S.protractor) {
+    const p = S.protractor, d0 = Math.hypot(points[0].x - p.cx, points[0].y - p.cy);
+    if (Math.abs(d0 - p.r) < tol) return points.map(q => { const a = Math.atan2(q.y - p.cy, q.x - p.cx); return { x: p.cx + Math.cos(a) * p.r, y: p.cy + Math.sin(a) * p.r }; });
+  }
+  return null;
+}
+
+/* ===================================================================== zoom & layout */
+function fitZoom() {
+  const c = S.cropping ? { w: S.w, h: S.h } : currentCrop();
+  const aw = Math.max(50, main.clientWidth - 64), ah = Math.max(50, main.clientHeight - 64);
+  return Math.max(0.05, Math.min(aw * S.dpr / c.w, ah * S.dpr / c.h, 1));
+}
+function layout() {
+  if (!S.img) return;
+  if (S.fit) S.zoom = fitZoom();
+  view.style.width = (view.width * S.zoom / S.dpr) + "px";
+  view.style.height = (view.height * S.zoom / S.dpr) + "px";
+  view.style.imageRendering = S.zoom > 2 ? "pixelated" : "auto";
+  positionTextEditor();
+  const z = $("zoomPct"); if (z) z.textContent = Math.round(S.zoom * 100) + "%";
+}
+function setZoom(z, fit) { S.fit = !!fit; S.zoom = Math.max(0.1, Math.min(8, z)); layout(); render(); }
+
+/* ===================================================================== history */
+const snapshot = () => JSON.stringify({ objects: S.objects, crop: S.crop });
+function commit() { S.history = S.history.slice(0, S.hIndex + 1); S.history.push(snapshot()); S.hIndex = S.history.length - 1; changed(); }
+function restore(i) { const st = JSON.parse(S.history[i]); S.objects = st.objects; S.crop = st.crop; S.hIndex = i; S.sel = -1; changed(); }
+function undo() { if (S.editingText >= 0) endTextEdit(); if (S.hIndex > 0) restore(S.hIndex - 1); }
+function redo() { if (S.hIndex < S.history.length - 1) restore(S.hIndex + 1); }
+function changed() {
+  if (S.fit) layout(); render(); updateTextBar();
+  $("btnUndo").disabled = S.hIndex <= 0; $("btnRedo").disabled = S.hIndex >= S.history.length - 1;
+  call("stSetDirty", S.hIndex !== S.savedIndex);
+  if (S.settings && S.settings.autoCopyChanges && S.hIndex > 0) { clearTimeout(S.copyTimer); S.copyTimer = setTimeout(() => call("stCopy", exportPNG()).catch(() => {}), 600); }
+}
+function exportPNG(type = "image/png") {
+  const c = document.createElement("canvas"), cr = currentCrop(); c.width = cr.w; c.height = cr.h;
+  const sel = S.sel; S.sel = -1; renderInto(c.getContext("2d"), cr); S.sel = sel;
+  return c.toDataURL(type);
+}
+
+/* ===================================================================== pointer input */
+function toImage(e) {
+  const r = view.getBoundingClientRect(), c = S.cropping ? { x: 0, y: 0, w: S.w, h: S.h } : currentCrop();
+  return { x: c.x + (e.clientX - r.left) * (c.w / r.width), y: c.y + (e.clientY - r.top) * (c.h / r.height) };
+}
+function handleAt(o, p) { const tol = 8 * unit(); return handlesOf(o).find(h => dist(h, p) <= tol); }
+function topMovableAt(p) { const tol = 4 * unit(); for (let i = S.objects.length - 1; i >= 0; i--) if (movable(S.objects[i]) && hitObject(S.objects[i], p, tol)) return i; return -1; }
+/* Crop frame: dimmed outside, thin border, thick corner and edge handles
+   drawn just inside the frame (so they stay visible at the image edges),
+   dark under white so they show on light and dark screenshots. */
+function drawCropFrame(c, r) {
+  const u = unit();
+  c.save();
+  c.fillStyle = "rgba(0,0,0,.5)";
+  c.beginPath(); c.rect(0, 0, S.w, S.h); c.rect(r.x, r.y, r.w, r.h); c.fill("evenodd");
+  // thirds grid
+  c.strokeStyle = "rgba(255,255,255,.55)"; c.lineWidth = 1 * u; c.beginPath();
+  for (const f of [1 / 3, 2 / 3]) { c.moveTo(r.x + r.w * f, r.y); c.lineTo(r.x + r.w * f, r.y + r.h); c.moveTo(r.x, r.y + r.h * f); c.lineTo(r.x + r.w, r.y + r.h * f); }
+  c.stroke();
+  c.strokeStyle = "rgba(0,0,0,.6)"; c.lineWidth = 3 * u; c.strokeRect(r.x + .5 * u, r.y + .5 * u, r.w - u, r.h - u);
+  c.strokeStyle = "#fff"; c.lineWidth = 1.5 * u; c.strokeRect(r.x + .5 * u, r.y + .5 * u, r.w - u, r.h - u);
+  const t = 5 * u, L = Math.min(26 * u, r.w / 3, r.h / 3), M = Math.min(28 * u, r.w / 4, r.h / 4);
+  const ins = t / 2 + u; // inset so the whole handle is inside the image
+  const marks = [
+    [[r.x + ins, r.y + ins + L], [r.x + ins, r.y + ins], [r.x + ins + L, r.y + ins]],
+    [[r.x + r.w - ins - L, r.y + ins], [r.x + r.w - ins, r.y + ins], [r.x + r.w - ins, r.y + ins + L]],
+    [[r.x + ins, r.y + r.h - ins - L], [r.x + ins, r.y + r.h - ins], [r.x + ins + L, r.y + r.h - ins]],
+    [[r.x + r.w - ins - L, r.y + r.h - ins], [r.x + r.w - ins, r.y + r.h - ins], [r.x + r.w - ins, r.y + r.h - ins - L]],
+    [[r.x + r.w / 2 - M / 2, r.y + ins], [r.x + r.w / 2 + M / 2, r.y + ins]],
+    [[r.x + r.w / 2 - M / 2, r.y + r.h - ins], [r.x + r.w / 2 + M / 2, r.y + r.h - ins]],
+    [[r.x + ins, r.y + r.h / 2 - M / 2], [r.x + ins, r.y + r.h / 2 + M / 2]],
+    [[r.x + r.w - ins, r.y + r.h / 2 - M / 2], [r.x + r.w - ins, r.y + r.h / 2 + M / 2]],
+  ];
+  c.lineCap = "round"; c.lineJoin = "round";
+  for (const [w, col] of [[t + 2.5 * u, "rgba(0,0,0,.55)"], [t, "#fff"]]) {
+    c.strokeStyle = col; c.lineWidth = w;
+    for (const m of marks) { c.beginPath(); c.moveTo(m[0][0], m[0][1]); for (const q of m.slice(1)) c.lineTo(q[0], q[1]); c.stroke(); }
+  }
+  c.restore();
+}
+/* Shift while cropping keeps the area square (1:1). Corners and new areas
+   grow from the opposite (fixed) corner; side handles stay centered. The
+   square is limited to the image. */
+function squareCrop(d, r, p) {
+  const o = d.orig, MIN = 8;
+  const corner = (ax, ay, px, py) => {
+    const sx = px >= ax ? 1 : -1, sy = py >= ay ? 1 : -1;
+    const room = Math.min(sx > 0 ? S.w - ax : ax, sy > 0 ? S.h - ay : ay);
+    const side = Math.max(MIN, Math.min(Math.max(Math.abs(px - ax), Math.abs(py - ay)), room));
+    return { x: sx > 0 ? ax : ax - side, y: sy > 0 ? ay : ay - side, w: side, h: side };
+  };
+  const q = { x: Math.max(0, Math.min(S.w, p.x)), y: Math.max(0, Math.min(S.h, p.y)) };
+  switch (d.h) {
+    case "new": return corner(d.start.x, d.start.y, q.x, q.y);
+    case "nw": return corner(o.x + o.w, o.y + o.h, q.x, q.y);
+    case "ne": return corner(o.x, o.y + o.h, q.x, q.y);
+    case "sw": return corner(o.x + o.w, o.y, q.x, q.y);
+    case "se": return corner(o.x, o.y, q.x, q.y);
+    case "n": case "s": {
+      const side = Math.min(r.h, S.w), cx = o.x + o.w / 2;
+      const y = d.h === "n" ? r.y + r.h - side : r.y;
+      return { x: Math.max(0, Math.min(S.w - side, cx - side / 2)), y, w: side, h: side };
+    }
+    case "w": case "e": {
+      const side = Math.min(r.w, S.h), cy = o.y + o.h / 2;
+      const x = d.h === "w" ? r.x + r.w - side : r.x;
+      return { x, y: Math.max(0, Math.min(S.h - side, cy - side / 2)), w: side, h: side };
+    }
+  }
+  return r; // moving keeps the size
+}
+function cropHandleAt(p) {
+  const r = S.cropping, tol = 18 * unit(), ins = 4 * unit();
+  const pts = { nw: [r.x + ins, r.y + ins], ne: [r.x + r.w - ins, r.y + ins], sw: [r.x + ins, r.y + r.h - ins], se: [r.x + r.w - ins, r.y + r.h - ins],
+    n: [r.x + r.w / 2, r.y + ins], s: [r.x + r.w / 2, r.y + r.h - ins], w: [r.x + ins, r.y + r.h / 2], e: [r.x + r.w - ins, r.y + r.h / 2] };
+  for (const [k, [x, y]] of Object.entries(pts)) if (Math.hypot(p.x - x, p.y - y) <= tol) return k;
+  const full = r.x <= 0.5 && r.y <= 0.5 && r.w >= S.w - 1 && r.h >= S.h - 1;
+  if (p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h) return full ? "new" : "move";
+  return "new"; // outside the frame: draw a new area
+}
+let panStart = null;
+
+view.addEventListener("pointerdown", (e) => {
+  if (!S.img || e.button !== 0) return;
+  e.preventDefault(); // keep keyboard focus where we put it (e.g. a new text box)
+  closeFlyout();
+  const p = toImage(e);
+  if (e.pointerType === "touch" && !S.touchWriting && !S.cropping) { panStart = { x: e.clientX, y: e.clientY, sl: main.scrollLeft, st: main.scrollTop, id: e.pointerId }; view.setPointerCapture(e.pointerId); return; }
+  view.setPointerCapture(e.pointerId);
+  if (S.editingText >= 0) endTextEdit();
+
+  if (S.textMode) { textPointerDown(p, e); return; }
+  if (S.cropping) { const h = cropHandleAt(p); if (h) S.drag = { kind: "crop", h, start: { x: Math.max(0, Math.min(S.w, p.x)), y: Math.max(0, Math.min(S.h, p.y)) }, orig: { ...S.cropping } }; return; }
+  if (S.ruler && inRuler(S.ruler, p) && !nearRulerEdge(p)) { S.drag = { kind: "ruler", start: p, orig: { ...S.ruler } }; return; }
+  if (S.protractor && inProtractor(S.protractor, p) && Math.abs(Math.hypot(p.x - S.protractor.cx, p.y - S.protractor.cy) - S.protractor.r) > 28 * unit()) { S.drag = { kind: "protractor", start: p, orig: { ...S.protractor } }; return; }
+
+  const sel = S.objects[S.sel];
+  if (sel) {
+    const h = handleAt(sel, p);
+    if (h) { S.drag = { kind: "resize", h: h.id, start: p, orig: JSON.parse(JSON.stringify(sel)) }; return; }
+    if (hitObject(sel, p, 4 * unit())) {
+      if (e.detail >= 2 && sel.type === "text") { startTextEdit(S.sel); return; }
+      S.drag = { kind: "move", start: p, orig: JSON.parse(JSON.stringify(sel)) }; return;
+    }
+  }
+  if (S.tool === "shapes") { const i = topMovableAt(p); if (i >= 0) { S.sel = i; S.drag = { kind: "move", start: p, orig: JSON.parse(JSON.stringify(S.objects[i])) }; render(); updateTextBar(); return; } }
+  S.sel = -1; updateTextBar();
+
+  switch (S.tool) {
+    case "pen": case "highlighter": {
+      const st = S.tool === "pen" ? S.pen : S.hl;
+      S.draft = { type: "stroke", hl: S.tool === "highlighter", color: st.color, size: st.size, points: [p] };
+      S.snapped = false; armHold(); break;
+    }
+    case "eraser": S.erasing = true; S.erased = false; eraseAt(p); break;
+    case "shapes":
+      if (S.shape.kind === "text") { addText(p); return; }
+      if (S.shape.kind === "emoji") return;
+      S.draft = { type: "shape", kind: S.shape.kind, stroke: S.shape.stroke, fill: (S.shape.kind === "rect" || S.shape.kind === "oval") ? S.shape.fill : null, width: S.shape.width, x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+      break;
+  }
+  render();
+});
+function nearRulerEdge(p) { const e = rulerEdge(S.ruler); return distToSeg(p, e.a, e.b) < 28 * unit(); }
+
+view.addEventListener("pointermove", (e) => {
+  if (!S.img) return;
+  if (panStart && e.pointerId === panStart.id) { main.scrollLeft = panStart.sl - (e.clientX - panStart.x); main.scrollTop = panStart.st - (e.clientY - panStart.y); return; }
+  const p = toImage(e);
+  if (S.textMode) { textPointerMove(p); return; }
+  if (S.drag) { dragTo(p, e.shiftKey); return; }
+  if (S.draft && S.draft.type === "stroke") {
+    if (S.snapped) return;
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    const last = S.draft.points[S.draft.points.length - 1];
+    for (const ev of evs) S.draft.points.push(toImage(ev));
+    if (dist(last, p) > 2 * unit()) armHold();
+    render(); return;
+  }
+  if (S.draft && S.draft.type === "shape") {
+    let x2 = p.x, y2 = p.y;
+    if (e.shiftKey) {
+      const dx = x2 - S.draft.x1, dy = y2 - S.draft.y1;
+      if (S.draft.kind === "rect" || S.draft.kind === "oval") { const m = Math.max(Math.abs(dx), Math.abs(dy)); x2 = S.draft.x1 + Math.sign(dx || 1) * m; y2 = S.draft.y1 + Math.sign(dy || 1) * m; }
+      else { const a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4), l = Math.hypot(dx, dy); x2 = S.draft.x1 + Math.cos(a) * l; y2 = S.draft.y1 + Math.sin(a) * l; }
+    }
+    S.draft.x2 = x2; S.draft.y2 = y2; render(); return;
+  }
+  if (S.erasing) { eraseAt(p); return; }
+  // cursor feedback
+  let cur = S.tool === "eraser" ? "cell" : S.tool === "shapes" ? "crosshair" : "crosshair";
+  if (S.cropping) { const h = cropHandleAt(p); cur = h === "new" ? "crosshair" : h === "move" ? "move" : ({ nw: "nwse", se: "nwse", ne: "nesw", sw: "nesw", n: "ns", s: "ns", w: "ew", e: "ew" }[h] + "-resize"); }
+  else { const sel = S.objects[S.sel]; if (sel) { if (handleAt(sel, p)) cur = "pointer"; else if (hitObject(sel, p, 4 * unit())) cur = "move"; } if (S.ruler && inRuler(S.ruler, p) && !nearRulerEdge(p)) cur = "grab"; }
+  view.style.cursor = cur;
+});
+function armHold() {
+  clearTimeout(S.holdTimer);
+  S.holdTimer = setTimeout(() => {
+    if (!S.draft || S.draft.type !== "stroke" || S.snapped) return;
+    const r = recognize(S.draft.points);
+    if (!r) return;
+    S.draft = { type: "shape", kind: r.kind, stroke: S.draft.color, fill: null, width: S.draft.size, hl: S.draft.hl, x1: r.x1, y1: r.y1, x2: r.x2, y2: r.y2 };
+    S.snapped = true; render();
+  }, 650);
+}
+function dragTo(p, shift) {
+  const d = S.drag, dx = p.x - d.start.x, dy = p.y - d.start.y;
+  if (d.kind === "crop") {
+    const o = d.orig; let { x, y, w, h } = o; const x2 = x + w, y2 = y + h;
+    if (d.h === "new") {
+      const q = { x: Math.max(0, Math.min(S.w, p.x)), y: Math.max(0, Math.min(S.h, p.y)) };
+      if (Math.abs(q.x - d.start.x) < 4 * unit() && Math.abs(q.y - d.start.y) < 4 * unit()) return; // just a click
+      x = Math.min(q.x, d.start.x); y = Math.min(q.y, d.start.y); w = Math.max(8, Math.abs(q.x - d.start.x)); h = Math.max(8, Math.abs(q.y - d.start.y));
+    } else if (d.h === "move") { x = Math.max(0, Math.min(S.w - w, x + dx)); y = Math.max(0, Math.min(S.h - h, y + dy)); }
+    else {
+      let nx = x, ny = y, nx2 = x2, ny2 = y2;
+      if (d.h.includes("w")) nx = Math.min(x2 - 8, Math.max(0, x + dx));
+      if (d.h.includes("e")) nx2 = Math.max(x + 8, Math.min(S.w, x2 + dx));
+      if (d.h.includes("n")) ny = Math.min(y2 - 8, Math.max(0, y + dy));
+      if (d.h.includes("s")) ny2 = Math.max(y + 8, Math.min(S.h, y2 + dy));
+      x = nx; y = ny; w = nx2 - nx; h = ny2 - ny;
+    }
+    if (shift) ({ x, y, w, h } = squareCrop(d, { x, y, w, h }, p));
+    S.cropping = { x, y, w, h }; render(); return;
+  }
+  if (d.kind === "ruler") { S.ruler.cx = d.orig.cx + dx; S.ruler.cy = d.orig.cy + dy; render(); return; }
+  if (d.kind === "protractor") { S.protractor.cx = d.orig.cx + dx; S.protractor.cy = d.orig.cy + dy; render(); return; }
+  const o = S.objects[S.sel], g = d.orig; if (!o) return;
+  if (d.kind === "move") {
+    if (o.type === "shape") { o.x1 = g.x1 + dx; o.y1 = g.y1 + dy; o.x2 = g.x2 + dx; o.y2 = g.y2 + dy; }
+    else if (o.type === "stroke") { o.points = g.points.map(q => ({ x: q.x + dx, y: q.y + dy })); }
+    else { o.x = g.x + dx; o.y = g.y + dy; }
+  } else if (d.kind === "resize") {
+    if (o.type === "shape" && (o.kind === "line" || o.kind === "arrow")) { if (d.h === "p1") { o.x1 = g.x1 + dx; o.y1 = g.y1 + dy; } else { o.x2 = g.x2 + dx; o.y2 = g.y2 + dy; } }
+    else {
+      const b = bbox(g); let x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h;
+      if (d.h.includes("w")) x0 += dx; if (d.h.includes("e")) x1 += dx; if (d.h.includes("n")) y0 += dy; if (d.h.includes("s")) y1 += dy;
+      if (o.type === "emoji" || (shift && o.type === "shape")) { const s = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); if (d.h.includes("w")) x0 = x1 - s; else x1 = x0 + s; if (d.h.includes("n")) y0 = y1 - s; else y1 = y0 + s; }
+      const nx = Math.min(x0, x1), ny = Math.min(y0, y1), nw = Math.max(8, Math.abs(x1 - x0)), nh = Math.max(8, Math.abs(y1 - y0));
+      if (o.type === "shape") { o.x1 = nx; o.y1 = ny; o.x2 = nx + nw; o.y2 = ny + nh; }
+      else if (o.type === "text") { o.x = nx; o.y = ny; o.w = nw; }
+      else { o.x = nx; o.y = ny; o.w = nw; o.h = nh; }
+    }
+  }
+  render(); updateTextBar();
+}
+function endPointer(e) {
+  if (panStart) { panStart = null; return; }
+  if (S.textMode) { S.tdrag = false; return; }
+  clearTimeout(S.holdTimer);
+  if (S.drag) {
+    const k = S.drag.kind; S.drag = null;
+    if (k === "move" || k === "resize") commit();
+    return;
+  }
+  if (S.draft) {
+    const d = S.draft; S.draft = null;
+    if (d.type === "stroke") {
+      const snapped = snapStroke(d.points); if (snapped) d.points = snapped;
+      S.objects.push(d); commit();
+    } else if (Math.hypot(d.x2 - d.x1, d.y2 - d.y1) >= 3) {
+      S.objects.push(d); S.sel = S.objects.length - 1; commit();
+    } else render();
+    S.snapped = false;
+    return;
+  }
+  if (S.erasing) { S.erasing = false; if (S.erased) commit(); }
+}
+view.addEventListener("pointerup", endPointer);
+view.addEventListener("pointercancel", endPointer);
+function eraseAt(p) {
+  const tol = 6 * unit();
+  for (let i = S.objects.length - 1; i >= 0; i--) if (S.objects[i].type !== "redact" && hitObject(S.objects[i], p, tol)) { S.objects.splice(i, 1); S.erased = true; if (S.sel === i) S.sel = -1; render(); return; }
+}
+main.addEventListener("wheel", (e) => {
+  if (!S.img) return;
+  if (e.ctrlKey) { e.preventDefault(); setZoom(S.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15), false); return; }
+  const p = toImage(e);
+  const rot = (e.shiftKey ? 15 : 1) * Math.PI / 180 * Math.sign(e.deltaY);
+  if (S.ruler && inRuler(S.ruler, p)) { e.preventDefault(); S.ruler.a += rot; render(); }
+  else if (S.protractor && inProtractor(S.protractor, p)) { e.preventDefault(); if (e.altKey) S.protractor.r = Math.max(60, S.protractor.r * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); else S.protractor.a += rot; render(); }
+}, { passive: false });
+window.addEventListener("resize", () => { S.dpr = window.devicePixelRatio || 1; layout(); render(); });
+
+/* ===================================================================== text & emoji */
+const te = $("textEdit");
+function addText(p) {
+  const st = S.textStyle, w = Math.max(160, Math.min(S.w * 0.5, 420));
+  S.objects.push({ type: "text", x: p.x, y: p.y, w, h: st.size * 1.25, text: "", font: st.font, size: st.size, color: st.color, bg: st.bg, bold: st.bold });
+  S.sel = S.objects.length - 1; startTextEdit(S.sel, true);
+}
+function startTextEdit(i, isNew) {
+  S.editingText = i; S.textIsNew = !!isNew; const o = S.objects[i];
+  te.value = o.text; te.style.display = "block"; positionTextEditor(); render(); updateTextBar();
+  te.focus(); setTimeout(() => te.focus(), 0);
+}
+function positionTextEditor() {
+  if (S.editingText < 0) return;
+  const o = S.objects[S.editingText], c = currentCrop(), k = S.zoom / S.dpr;
+  Object.assign(te.style, { left: (o.x - c.x) * k + "px", top: (o.y - c.y) * k + "px", width: o.w * k + "px", minHeight: o.size * 1.25 * k + "px", height: "auto",
+    font: `${o.bold ? "600 " : ""}${o.size * k}px "${o.font}"`, color: o.color, background: o.bg || "transparent" });
+  te.style.height = te.scrollHeight + "px";
+}
+te.addEventListener("input", () => { const o = S.objects[S.editingText]; if (o) { o.text = te.value; positionTextEditor(); render(); } });
+te.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); endTextEdit(); } e.stopPropagation(); });
+function endTextEdit() {
+  if (S.editingText < 0) return;
+  const i = S.editingText, o = S.objects[i];
+  S.editingText = -1; te.style.display = "none";
+  if (!o.text.trim()) { S.objects.splice(i, 1); S.sel = -1; if (!S.textIsNew) commit(); else render(); }
+  else commit();
+  updateTextBar();
+}
+function addEmoji(ch) {
+  const c = currentCrop(), s = Math.round(Math.min(c.w, c.h) * 0.12) || 48;
+  S.objects.push({ type: "emoji", char: ch, x: c.x + c.w / 2 - s / 2, y: c.y + c.h / 2 - s / 2, w: s, h: s });
+  S.sel = S.objects.length - 1; commit();
+}
+function updateTextBar() {
+  const bar = $("textBar"), o = S.objects[S.sel];
+  if (!o || o.type !== "text") { bar.classList.remove("show"); return; }
+  const r = view.getBoundingClientRect(), c = currentCrop(), k = S.zoom / S.dpr;
+  bar.innerHTML = `<select id="tbFont" title="Font">${["Segoe UI","Arial","Calibri","Cambria","Consolas","Georgia","Times New Roman","Verdana"].map(f => `<option ${f === o.font ? "selected" : ""}>${f}</option>`).join("")}</select>
+    <select id="tbSize" title="Size">${[12,14,16,18,20,24,28,32,40,48,64,72,96].map(s => `<option ${s === o.size ? "selected" : ""}>${s}</option>`).join("")}</select>
+    <button id="tbBold" title="Bold" class="${o.bold ? "tool on" : ""}" style="width:32px;height:30px"><svg><use href="#i-bold"/></svg></button>
+    <div class="sep" style="margin:0 2px"></div>
+    ${SHAPE_COLORS.slice(0, 8).map(cl => `<button class="sw ${cl === o.color ? "on" : ""}" data-c="${cl}" title="Text color" style="background:${cl}"></button>`).join("")}
+    <div class="sep" style="margin:0 2px"></div>
+    <button class="sw none ${!o.bg ? "on" : ""}" data-bg="" title="No highlight"></button>${["#ffe600","#80d6ff","#80ff9e","#ff80ff"].map(cl => `<button class="sw ${cl === o.bg ? "on" : ""}" data-bg="${cl}" title="Highlight" style="background:${cl}"></button>`).join("")}`;
+  bar.classList.add("show");
+  const bw = bar.offsetWidth;
+  bar.style.left = Math.max(8, Math.min(innerWidth - bw - 8, r.left + (o.x - c.x) * k)) + "px";
+  bar.style.top = Math.max(56, r.top + (o.y - c.y) * k - 52) + "px";
+  const apply = (f) => { f(o); Object.assign(S.textStyle, { font: o.font, size: o.size, color: o.color, bg: o.bg, bold: o.bold }); if (S.editingText >= 0) { positionTextEditor(); render(); te.focus(); } else commit(); updateTextBar(); };
+  $("tbFont").onchange = (e) => apply(o => o.font = e.target.value);
+  $("tbSize").onchange = (e) => apply(o => o.size = +e.target.value);
+  $("tbBold").onclick = () => apply(o => o.bold = !o.bold);
+  bar.querySelectorAll("[data-c]").forEach(b => b.onclick = () => apply(o => o.color = b.dataset.c));
+  bar.querySelectorAll("[data-bg]").forEach(b => b.onclick = () => apply(o => o.bg = b.dataset.bg || null));
+  bar.onpointerdown = (e) => { if (e.target.tagName !== "SELECT") e.preventDefault(); };
+}
+
+/* ===================================================================== flyouts & menus */
+const fly = $("flyout"); let flyOwner = null;
+function openFlyout(anchor, html, bind, align) {
+  if (flyOwner === anchor && fly.classList.contains("show")) { closeFlyout(); return; }
+  fly.innerHTML = html; fly.classList.add("show"); flyOwner = anchor;
+  const r = anchor.getBoundingClientRect(), fw = fly.offsetWidth;
+  let left = align === "right" ? r.right - fw : align === "center" ? r.left + r.width / 2 - fw / 2 : r.left;
+  fly.style.left = Math.max(8, Math.min(innerWidth - fw - 8, left)) + "px"; fly.style.top = (r.bottom + 6) + "px";
+  if (bind) bind(fly);
+  const first = fly.querySelector("button:not(:disabled), input"); if (first) first.focus({ preventScroll: true });
+}
+function closeFlyout() { fly.classList.remove("show"); flyOwner = null; }
+document.addEventListener("pointerdown", (e) => { if (fly.classList.contains("show") && !fly.contains(e.target) && !(flyOwner && flyOwner.contains(e.target))) closeFlyout(); }, true);
+const icon = (id) => `<svg><use href="#${id}"/></svg>`;
+const swatches = (colors, cur, attr) => `<div class="swatches">${colors.map(c => `<button class="sw ${c === cur ? "on" : ""}" ${attr}="${c}" title="${c}" style="background:${c}"></button>`).join("")}</div>`;
+
+function modeMenu() {
+  openFlyout($("btnMode"), modesFor(S.settings.kind).map(m => `<button class="mi ${S.settings.mode === m.id ? "checked" : ""}" data-mode="${m.id}">${icon(m.icon)}${m.label}</button>`).join(""), (f) => {
+    f.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { S.settings.mode = b.dataset.mode; saveSettings(); updateMode(); closeFlyout(); });
+  });
+}
+function delayMenu() {
+  openFlyout($("btnDelay"), DELAYS.map(d => `<button class="mi ${S.settings.delay === d ? "checked" : ""}" data-d="${d}">${d ? d + " seconds" : "No delay"}</button>`).join(""), (f) => {
+    f.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { S.settings.delay = +b.dataset.d; saveSettings(); updateMode(); closeFlyout(); });
+  });
+}
+function moreMenu() {
+  const img = !!S.img;
+  const html = `<button class="mi" id="mOpen">${icon("i-open")}Open file<span class="kb">Ctrl+O</span></button>` +
+    (img ? `<button class="mi" id="mPrint">${icon("i-print")}Print<span class="kb">Ctrl+P</span></button>
+      <div class="msep"></div>
+      <button class="mi ${S.ruler ? "ticked" : ""}" id="mRuler">${icon("i-ruler")}Ruler<svg class="check" style="margin-left:auto"><use href="#i-check"/></svg></button>
+      <button class="mi ${S.protractor ? "ticked" : ""}" id="mProt">${icon("i-protractor")}Protractor<svg class="check" style="margin-left:auto"><use href="#i-check"/></svg></button>
+      <button class="mi ${S.touchWriting ? "ticked" : ""}" id="mTouch">${icon("i-touch")}Touch writing<svg class="check" style="margin-left:auto"><use href="#i-check"/></svg></button>
+      <div class="msep"></div>
+      <div class="zoomrow"><span class="lbl">Zoom</span><button id="mZoomOut" title="Zoom out (Ctrl+-)">${icon("i-minus")}</button><span class="pct" id="zoomPct">${Math.round(S.zoom * 100)}%</span><button id="mZoomIn" title="Zoom in (Ctrl++)">${icon("i-add")}</button><button id="mFit" title="Fit to window (Ctrl+0)" style="font-size:12px">Fit</button></div>` : "") +
+    `<div class="msep"></div><button class="mi" id="mSettings">${icon("i-settings")}Settings</button>`;
+  openFlyout($("btnMore"), html, (f) => {
+    $("mOpen").onclick = () => { closeFlyout(); openFile(); };
+    $("mSettings").onclick = () => { closeFlyout(); showSettings(); };
+    if (!img) return;
+    $("mPrint").onclick = () => { closeFlyout(); printImage(); };
+    $("mRuler").onclick = () => { toggleRuler(); closeFlyout(); };
+    $("mProt").onclick = () => { toggleProtractor(); closeFlyout(); };
+    $("mTouch").onclick = () => { S.touchWriting = !S.touchWriting; toast(S.touchWriting ? "Touch writing is on" : "Touch writing is off"); closeFlyout(); };
+    $("mZoomOut").onclick = () => setZoom(S.zoom / 1.25);
+    $("mZoomIn").onclick = () => setZoom(S.zoom * 1.25);
+    $("mFit").onclick = () => setZoom(1, true);
+  }, "right");
+}
+function toolFlyout(btn, t) {
+  if (t === "pen" || t === "highlighter") {
+    const st = t === "pen" ? S.pen : S.hl, colors = t === "pen" ? PEN_COLORS : HL_COLORS, max = t === "pen" ? 24 : 40;
+    openFlyout(btn, `<div class="fly-pad"><div class="fly-title">${t === "pen" ? "Ballpoint pen" : "Highlighter"}</div>${swatches(colors, st.color, "data-c")}
+      <div class="row"><label>Size</label><input type="range" id="fSize" min="1" max="${max}" value="${st.size}"><span class="val" id="fSizeV">${st.size}</span></div></div>`, (f) => {
+      f.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { st.color = b.dataset.c; f.querySelectorAll("[data-c]").forEach(x => x.classList.toggle("on", x === b)); updateToolIcons(); });
+      $("fSize").oninput = (e) => { st.size = +e.target.value; $("fSizeV").textContent = st.size; };
+    }, "center");
+  } else if (t === "eraser") {
+    openFlyout(btn, `<div class="fly-pad" style="width:220px"><div class="fly-title">Eraser</div><button class="wide-btn" id="fEraseAll">${icon("i-eraser")}Erase all ink</button></div>`, () => {
+      $("fEraseAll").onclick = () => { const before = S.objects.length; S.objects = S.objects.filter(o => o.type !== "stroke"); S.sel = -1; if (S.objects.length !== before) commit(); closeFlyout(); };
+    }, "center");
+  } else if (t === "shapes") {
+    const sh = S.shape, kinds = [["line","i-line","Line"],["arrow","i-arrow","Arrow"],["rect","i-rect","Rectangle"],["oval","i-oval","Oval"],["text","i-text","Text"]];
+    openFlyout(btn, `<div class="fly-pad" style="width:300px"><div class="fly-title">Shapes</div>
+      <div class="shape-kinds">${kinds.map(([k, ic, l]) => `<button data-k="${k}" class="${sh.kind === k ? "on" : ""}" title="${l}">${icon(ic)}</button>`).join("")}<button id="fEmojiBtn" title="Emoji">${icon("i-emoji")}</button></div>
+      <div id="fShapeOpts"></div></div>`, (f) => {
+      const opts = () => {
+        const box = $("fShapeOpts");
+        if (sh.kind === "emoji") { box.innerHTML = `<div class="emoji-grid">${EMOJI.map(e => `<button data-e="${e}">${e}</button>`).join("")}</div>`; box.querySelectorAll("[data-e]").forEach(b => b.onclick = () => { addEmoji(b.dataset.e); closeFlyout(); }); return; }
+        if (sh.kind === "text") { box.innerHTML = `<div class="fly-title" style="margin-top:12px">Click on the image to add a text box.</div>`; return; }
+        box.innerHTML = `<div class="fly-title" style="margin-top:12px">Outline</div>${swatches(SHAPE_COLORS, sh.stroke, "data-s")}` +
+          (sh.kind === "rect" || sh.kind === "oval" ? `<div class="fly-title" style="margin-top:12px">Fill</div><div class="swatches"><button class="sw none ${!sh.fill ? "on" : ""}" data-f="" title="No fill"></button>${SHAPE_COLORS.slice(0, 11).map(c => `<button class="sw ${c === sh.fill ? "on" : ""}" data-f="${c}" style="background:${c}"></button>`).join("")}</div>` : "") +
+          `<div class="row"><label>Thickness</label><input type="range" id="fW" min="1" max="24" value="${sh.width}"><span class="val" id="fWV">${sh.width}</span></div>`;
+        const applySel = (fn) => { const o = S.objects[S.sel]; if (o && o.type === "shape") { fn(o); commit(); } };
+        box.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { sh.stroke = b.dataset.s; box.querySelectorAll("[data-s]").forEach(x => x.classList.toggle("on", x === b)); applySel(o => o.stroke = sh.stroke); });
+        box.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { sh.fill = b.dataset.f || null; box.querySelectorAll("[data-f]").forEach(x => x.classList.toggle("on", x === b)); applySel(o => { if (o.kind === "rect" || o.kind === "oval") o.fill = sh.fill; }); });
+        $("fW").oninput = (e) => { sh.width = +e.target.value; $("fWV").textContent = sh.width; const o = S.objects[S.sel]; if (o && o.type === "shape") { o.width = sh.width; render(); } };
+        $("fW").onchange = () => { const o = S.objects[S.sel]; if (o && o.type === "shape") commit(); };
+      };
+      f.querySelectorAll("[data-k]").forEach(b => b.onclick = () => { sh.kind = b.dataset.k; f.querySelectorAll(".shape-kinds button").forEach(x => x.classList.toggle("on", x === b)); opts(); });
+      $("fEmojiBtn").onclick = () => { sh.kind = "emoji"; f.querySelectorAll(".shape-kinds button").forEach(x => x.classList.toggle("on", x.id === "fEmojiBtn")); opts(); };
+      if (sh.kind === "emoji") { $("fEmojiBtn").classList.add("on"); }
+      opts();
+    }, "center");
+  }
+}
+
+/* ===================================================================== tools */
+function setTool(t) {
+  if (S.editingText >= 0) endTextEdit();
+  if (S.textMode) endTextActions();
+  if (t === "crop") { startCrop(); return; }
+  S.tool = t;
+  document.querySelectorAll(".tool[data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === t));
+  render();
+}
+document.querySelectorAll(".tool[data-tool]").forEach(b => b.addEventListener("click", () => {
+  const t = b.dataset.tool;
+  if (t === "crop") { if (S.cropping) cancelCrop(); else startCrop(); return; }
+  if (S.tool === t) toolFlyout(b, t); else { closeFlyout(); setTool(t); if (t === "shapes") toolFlyout(b, t); }
+}));
+function updateToolIcons() { $("penTip").setAttribute("fill", S.pen.color); $("hlTip").setAttribute("fill", S.hl.color); }
+function toggleRuler() { const c = currentCrop(); S.ruler = S.ruler ? null : { cx: c.x + c.w / 2, cy: c.y + c.h / 2, a: 0, len: Math.max(c.w, c.h) * 1.1, t: Math.max(56, Math.min(c.w, c.h) * 0.11) }; render(); }
+function toggleProtractor() { const c = currentCrop(); S.protractor = S.protractor ? null : { cx: c.x + c.w / 2, cy: c.y + c.h * 0.7, a: 0, r: Math.max(80, Math.min(c.w, c.h) * 0.35) }; render(); }
+
+function startCrop() {
+  if (S.editingText >= 0) endTextEdit();
+  if (S.textMode) endTextActions();
+  S.sel = -1; updateTextBar();
+  S.cropping = { ...currentCrop() };
+  document.querySelectorAll(".tool[data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === "crop"));
+  $("cropBar").classList.add("show"); S.fit = true; layout(); render();
+}
+function applyCrop() { const r = S.cropping; S.cropping = null; S.crop = { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.w), h: Math.round(r.h) }; endCropUI(); commit(); }
+function cancelCrop() { S.cropping = null; endCropUI(); render(); }
+function endCropUI() { $("cropBar").classList.remove("show"); S.fit = true; setTool(S.tool && S.tool !== "crop" ? S.tool : "pen"); layout(); }
+$("cropApply").onclick = applyCrop; $("cropCancel").onclick = cancelCrop;
+
+/* ===================================================================== actions */
+let toastTimer = 0;
+function toast(html, ms = 2600) { const t = $("toast"); t.innerHTML = html; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), ms); }
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function newSnip(kindOverride) {
+  if (kindOverride && typeof kindOverride !== "string") kindOverride = undefined;
+  if (S.editingText >= 0) endTextEdit();
+  closeFlyout();
+  if (S.video && S.video.unsaved && S.settings.askToSaveEdited) {
+    const r = await dialog("Save recording?", "The current screen recording has not been saved. Do you want to save it before starting a new one?", [["save", "Save", true], ["discard", "Don't save"], ["cancel", "Cancel"]]);
+    if (r === "cancel") return; if (r === "save" && !(await saveVideo())) return;
+  }
+  if (!$("vid").paused) $("vid").pause();
+  try {
+    const r = await callAsync("stNewSnip", kindOverride || S.settings.kind || "snip", S.settings.mode, S.settings.delay);
+    if (!r) return;
+    showResult(r);
+  } catch (e) { toast((S.settings.kind === "record" ? "The recording failed: " : "The snip failed: ") + esc(e), 8000); }
+}
+function showResult(r) {
+  if (!r) return;
+  if (r.text) showExtractedText(r.text);
+  else if (r.color) toast(`Color <b>${esc(r.color)}</b> copied to clipboard`);
+  else if (r.video) showVideo(r.video);
+  else if (r.image) showImage(r.image);
+}
+async function copyImage() { if (!S.img) return; try { await call("stCopy", exportPNG()); toast("Copied to clipboard"); } catch (e) { toast("Copy failed: " + esc(e)); } }
+async function saveAs() {
+  if (!S.img) return false;
+  if (S.editingText >= 0) endTextEdit();
+  try {
+    const p = await callAsync("stSaveAs", exportPNG());
+    if (p) { S.savedIndex = S.hIndex; call("stSetDirty", false); toast(`Saved to ${esc(p)}<a id="tShow">Show in folder</a>`, 5000); const a = $("tShow"); if (a) a.onclick = () => call("stShowInFolder", p); return true; }
+  } catch (e) { toast("Save failed: " + esc(e), 6000); }
+  return false;
+}
+async function openFile() { try { showResult(await callAsync("stOpenFile")); } catch (e) { toast("Could not open the file: " + esc(e), 6000); } }
+async function editInPaint() { if (!S.img) return; try { await call("stEditInPaint", exportPNG()); } catch (e) { toast("Paint could not be started: " + esc(e), 6000); } }
+function printImage() { if (!S.img) return; $("printImg").src = exportPNG(); setTimeout(() => window.print(), 50); }
+
+$("btnNew").onclick = () => newSnip();
+$("btnTextExtractor").onclick = () => newSnip("text");
+$("segSnip").onclick = () => { S.settings.kind = "snip"; updateMode(); saveSettings(); };
+$("segRec").onclick = () => { S.settings.kind = "record"; updateMode(); saveSettings(); };
+$("btnMode").onclick = modeMenu;
+$("btnDelay").onclick = delayMenu;
+$("btnMore").onclick = moreMenu;
+$("btnUndo").onclick = undo; $("btnRedo").onclick = redo;
+$("btnCopy").onclick = copyImage; $("btnSave").onclick = saveAs;
+$("btnPaint").onclick = editInPaint;
+
+window.addEventListener("keydown", (e) => {
+  if (e.target === te) return;
+  if ($("scrim").classList.contains("show")) { if (e.key === "Escape") closeDialog("cancel"); return; }
+  const k = e.key.toLowerCase(), tag = e.target.tagName;
+  if (tag === "INPUT" || tag === "SELECT") return;
+  if (e.altKey && !e.ctrlKey) {
+    if (k === "m") { e.preventDefault(); modeMenu(); } else if (k === "n") { e.preventDefault(); newSnip(); } else if (k === "d") { e.preventDefault(); delayMenu(); }
+    return;
+  }
+  if (S.textMode && e.ctrlKey && (k === "a" || k === "c")) {
+    e.preventDefault();
+    if (k === "a") { selectAllWords(); } else copySelectedText();
+    return;
+  }
+  if (S.textMode && k === "escape") { endTextActions(); return; }
+  if (e.ctrlKey) {
+    if (S.video) {
+      const vmap = { n: newSnip, o: openFile, s: saveVideo };
+      if (vmap[k]) { e.preventDefault(); vmap[k](); }
+      return;
+    }
+    const map = { n: newSnip, o: openFile, s: saveAs, c: copyImage, p: printImage, z: () => (e.shiftKey ? redo() : undo()), y: redo,
+      "0": () => setZoom(1, true), "1": () => setZoom(1, false), "=": () => setZoom(S.zoom * 1.25), "+": () => setZoom(S.zoom * 1.25), "-": () => setZoom(S.zoom / 1.25) };
+    if (map[k]) { e.preventDefault(); map[k](); }
+    return;
+  }
+  if (k === "escape") {
+    if (fly.classList.contains("show")) closeFlyout();
+    else if (S.cropping) cancelCrop();
+    else if (S.draft) { S.draft = null; render(); }
+    else if (S.sel >= 0) { S.sel = -1; render(); updateTextBar(); }
+    else if ($("settings").classList.contains("show")) hideSettings();
+  } else if (k === "enter" && S.cropping) applyCrop();
+  else if ((k === "delete" || k === "backspace") && S.sel >= 0) { S.objects.splice(S.sel, 1); S.sel = -1; commit(); }
+});
+
+/* ===================================================================== image lifecycle */
+function showImage(info) {
+  const img = new Image();
+  img.onload = () => {
+    S.img = img; S.w = img.naturalWidth; S.h = img.naturalHeight; S.name = info.name;
+    S.objects = []; S.crop = null; S.sel = -1; S.cropping = null; S.draft = null; S.ruler = null; S.protractor = null;
+    S.history = [snapshot()]; S.hIndex = 0; S.savedIndex = 0; S.fit = true;
+    leaveVideo();
+    document.body.classList.add("has-image"); call("stHasImage", true);
+    $("cropBar").classList.remove("show");
+    setTool("pen"); updateToolIcons();
+    requestAnimationFrame(() => { layout(); changed(); });
+  };
+  img.onerror = () => toast("The image could not be displayed.", 6000);
+  img.src = info.dataUrl;
+}
+window.stReceive = async (res) => {
+  if (S.video && S.video.unsaved && S.settings.askToSaveEdited) {
+    const r = await dialog("Save recording?", "The current screen recording has not been saved. Do you want to save it before opening the new one?", [["save", "Save", true], ["discard", "Don't save"], ["cancel", "Cancel"]]);
+    if (r === "cancel") return; if (r === "save" && !(await saveVideo())) return;
+  }
+  if (S.img && !S.video && S.hIndex !== S.savedIndex && S.settings.askToSaveEdited) {
+    const r = await dialog("Save changes?", "Do you want to save the changes to your current snip before opening the new one?", [["save", "Save", true], ["discard", "Don't save"], ["cancel", "Cancel"]]);
+    if (r === "cancel") return; if (r === "save" && !(await saveAs())) return;
+  }
+  showResult(res);
+};
+
+
+
+/* ===================================================================== Text Extractor result and Text Actions (OCR) */
+function showExtractedText(t) {
+  if (!t.text) { toast("No text found. Try a larger area or clearer text."); return; }
+  if (t.copied) { toast(`Text copied <a id="tView">View</a>`, 5000); const a = $("tView"); if (a) a.onclick = () => textDialog(t.text); return; }
+  textDialog(t.text);
+}
+async function textDialog(text) {
+  $("dlgText").innerHTML = `<textarea id="dlgTA" style="width:100%;height:min(180px, 40vh);min-height:48px;resize:vertical;font:13px/1.45 var(--font);color:var(--text);background:var(--field);border:1px solid var(--btn-border);border-radius:4px;padding:8px"></textarea>`;
+  $("dlgTA").value = text;
+  const r = await dialog("Text found", "", [["copy", "Copy", true], ["close", "Close"]], true);
+  if (r === "copy") { await call("stCopyText", $("dlgTA").value); toast("Text copied"); }
+}
+
+function exportBase() {
+  const c = document.createElement("canvas"), cr = currentCrop(); c.width = cr.w; c.height = cr.h;
+  c.getContext("2d").drawImage(S.img, cr.x, cr.y, cr.w, cr.h, 0, 0, cr.w, cr.h);
+  return c.toDataURL("image/png");
+}
+async function startTextActions() {
+  if (!S.img) return;
+  if (S.cropping) cancelCrop();
+  if (S.editingText >= 0) endTextEdit();
+  S.sel = -1; updateTextBar();
+  S.textMode = true; S.tsel = null;
+  document.querySelectorAll(".tool[data-tool]").forEach(b => b.classList.remove("on"));
+  $("btnTextActions").classList.add("on"); $("taBar").classList.add("show"); view.style.cursor = "text";
+  const key = JSON.stringify(currentCrop());
+  if (!S.ocr || S.ocrKey !== key) {
+    S.ocr = null; taStatus("Reading text…");
+    try {
+      const res = await callAsync("stOcr", exportBase());
+      const c = currentCrop(), words = [];
+      (res && res.lines || []).forEach((l, li) => (l.words || []).forEach((w, wi) => words.push({ text: w.text, x: w.x + c.x, y: w.y + c.y, w: w.w, h: w.h, line: li })));
+      S.ocr = { words }; S.ocrKey = key;
+    } catch (e) { endTextActions(); toast("Text recognition failed: " + esc(e), 8000); return; }
+  }
+  if (!S.textMode) return;
+  taStatus(S.ocr.words.length ? "" : "No text found");
+  updateTaButtons(); render();
+}
+function endTextActions() {
+  S.textMode = false; S.tsel = null; S.tdrag = false;
+  $("btnTextActions").classList.remove("on"); $("taBar").classList.remove("show"); closeFlyout();
+  if (S.tool) document.querySelectorAll(".tool[data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === S.tool));
+  render();
+}
+function taStatus(t) { $("taStatus").textContent = t; $("taStatus").style.display = t ? "" : "none"; }
+function updateTaButtons() {
+  const has = S.ocr && S.ocr.words.length;
+  for (const id of ["taCopyAll", "taTable", "taRedact", "taRedactMenu"]) $(id).disabled = !has;
+  $("taRedactSel").disabled = !S.tsel;
+}
+function drawWords(c) {
+  const sel = selectedIdx();
+  c.save();
+  S.ocr.words.forEach((w, i) => {
+    c.fillStyle = sel.has(i) ? "rgba(0,95,184,.38)" : "rgba(0,95,184,.12)";
+    c.fillRect(w.x - 1, w.y - 1, w.w + 2, w.h + 2);
+  });
+  c.restore();
+}
+function selectedIdx() {
+  const out = new Set(); if (!S.tsel) return out;
+  const a = Math.min(S.tsel.a, S.tsel.b), b = Math.max(S.tsel.a, S.tsel.b);
+  for (let i = a; i <= b; i++) out.add(i);
+  return out;
+}
+function wordAt(p, nearest) {
+  if (!S.ocr) return -1;
+  const tol = 3 * unit(); let best = -1, bd = 1e18;
+  S.ocr.words.forEach((w, i) => {
+    const dx = Math.max(w.x - p.x, 0, p.x - (w.x + w.w)), dy = Math.max(w.y - p.y, 0, p.y - (w.y + w.h));
+    const d = dx * dx + dy * dy * 4;
+    if (d < bd) { bd = d; best = i; }
+  });
+  if (best >= 0 && (nearest || bd <= tol * tol)) return best;
+  return -1;
+}
+function textPointerDown(p, e) {
+  closeFlyout();
+  const i = wordAt(p, false);
+  S.tsel = i >= 0 ? { a: i, b: i } : null; S.tdrag = i >= 0;
+  updateTaButtons(); render();
+}
+function textPointerMove(p) {
+  if (!S.tdrag || !S.tsel) { view.style.cursor = wordAt(p, false) >= 0 ? "text" : "default"; return; }
+  const i = wordAt(p, true); if (i >= 0 && i !== S.tsel.b) { S.tsel.b = i; updateTaButtons(); render(); }
+}
+function selectAllWords() { if (S.ocr && S.ocr.words.length) { S.tsel = { a: 0, b: S.ocr.words.length - 1 }; updateTaButtons(); render(); } }
+function wordsText(ws) {
+  let out = "", line = null;
+  for (const w of ws) { if (line !== null) out += w.line === line ? " " : "\r\n"; out += w.text; line = w.line; }
+  return out;
+}
+async function copySelectedText() {
+  if (!S.ocr) return;
+  const idx = [...selectedIdx()].sort((a, b) => a - b);
+  const ws = idx.length ? idx.map(i => S.ocr.words[i]) : S.ocr.words;
+  if (!ws.length) return;
+  await call("stCopyText", wordsText(ws)); toast(idx.length ? "Selected text copied" : "All text copied");
+}
+/* Copy as table: words are grouped into rows by vertical position and into
+   cells by horizontal gaps wider than about one character height. */
+function tableText(words) {
+  if (!words.length) return "";
+  const hs = words.map(w => w.h).sort((a, b) => a - b), mh = hs[Math.floor(hs.length / 2)] || 10;
+  const sorted = [...words].sort((a, b) => (a.y + a.h / 2) - (b.y + b.h / 2));
+  const rows = [];
+  for (const w of sorted) {
+    const cy = w.y + w.h / 2, row = rows[rows.length - 1];
+    if (row && Math.abs(cy - row.cy) <= mh * 0.6) { row.words.push(w); row.cy = (row.cy * (row.words.length - 1) + cy) / row.words.length; }
+    else rows.push({ cy, words: [w] });
+  }
+  // Column boundaries shared by all rows: x positions where a cell starts after a wide gap.
+  const starts = [];
+  for (const r of rows) {
+    r.words.sort((a, b) => a.x - b.x);
+    r.cells = [];
+    let cur = null;
+    for (const w of r.words) {
+      if (!cur || w.x - (cur.x2) > mh * 1.1) { cur = { x: w.x, x2: w.x + w.w, text: w.text }; r.cells.push(cur); starts.push(w.x); }
+      else { cur.text += " " + w.text; cur.x2 = w.x + w.w; }
+    }
+  }
+  starts.sort((a, b) => a - b);
+  const cols = [];
+  for (const x of starts) if (!cols.length || x - cols[cols.length - 1] > mh * 1.5) cols.push(x);
+  const colOf = (x) => { let k = 0; cols.forEach((c, i) => { if (x >= c - mh * 0.75) k = i; }); return k; };
+  return rows.map(r => {
+    const out = new Array(cols.length).fill("");
+    for (const c of r.cells) { const k = colOf(c.x); out[k] = out[k] ? out[k] + " " + c.text : c.text; }
+    while (out.length > 1 && out[out.length - 1] === "") out.pop();
+    return out.join("\t");
+  }).join("\r\n");
+}
+async function copyTable() { if (!S.ocr || !S.ocr.words.length) return; await call("stCopyText", tableText(S.ocr.words)); toast("Table copied – paste it into Excel or Word"); }
+
+/* Redaction: opaque black boxes, flattened when the image is saved or copied. */
+const REDACT = { email: true, phone: true };
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const PHONE_RE = /\+?\(?\d[\d\s().\/-]{5,}\d/g;
+function findSensitive(words, kinds) {
+  const byLine = new Map();
+  words.forEach(w => { if (!byLine.has(w.line)) byLine.set(w.line, []); byLine.get(w.line).push(w); });
+  const hits = [];
+  for (const ws of byLine.values()) {
+    ws.sort((a, b) => a.x - b.x);
+    let str = "", spans = [];
+    ws.forEach((w, i) => { if (i) str += " "; spans.push([str.length, str.length + w.text.length]); str += w.text; });
+    const take = (re, check) => { re.lastIndex = 0; let m; while ((m = re.exec(str))) { if (check && !check(m[0])) continue; const s0 = m.index, s1 = m.index + m[0].length; const hit = ws.filter((w, i) => spans[i][0] < s1 && spans[i][1] > s0); if (hit.length) hits.push(hit); } };
+    if (kinds.email) take(EMAIL_RE);
+    if (kinds.phone) take(PHONE_RE, (t) => (t.match(/\d/g) || []).length >= 7);
+  }
+  return hits;
+}
+function redactBoxes(groups) {
+  const pad = 2;
+  let n = 0;
+  for (const g of groups) {
+    const x0 = Math.min(...g.map(w => w.x)) - pad, y0 = Math.min(...g.map(w => w.y)) - pad;
+    const x1 = Math.max(...g.map(w => w.x + w.w)) + pad, y1 = Math.max(...g.map(w => w.y + w.h)) + pad;
+    S.objects.push({ type: "redact", x: x0, y: y0, w: x1 - x0, h: y1 - y0 }); n++;
+  }
+  if (n) commit();
+  return n;
+}
+function quickRedact() {
+  if (!S.ocr) return;
+  const n = redactBoxes(findSensitive(S.ocr.words, REDACT));
+  toast(n ? `${n} item${n > 1 ? "s" : ""} redacted` : "No email addresses or phone numbers found");
+}
+function redactSelection() {
+  const idx = [...selectedIdx()].sort((a, b) => a - b); if (!idx.length) return;
+  const byLine = new Map();
+  idx.forEach(i => { const w = S.ocr.words[i]; if (!byLine.has(w.line)) byLine.set(w.line, []); byLine.get(w.line).push(w); });
+  redactBoxes([...byLine.values()]); S.tsel = null; updateTaButtons(); render();
+}
+function removeRedactions() {
+  const before = S.objects.length; S.objects = S.objects.filter(o => o.type !== "redact");
+  if (S.objects.length !== before) { commit(); toast("Redactions removed"); }
+}
+function redactMenu() {
+  openFlyout($("taRedactMenu"), `<button class="mi ${REDACT.email ? "ticked" : ""}" id="rqEmail"><svg class="check"><use href="#i-check"/></svg>Email addresses</button>
+    <button class="mi ${REDACT.phone ? "ticked" : ""}" id="rqPhone"><svg class="check"><use href="#i-check"/></svg>Phone numbers</button>
+    <div class="msep"></div><button class="mi" id="rqRemove">Remove all redactions</button>`, () => {
+    $("rqEmail").onclick = () => { REDACT.email = !REDACT.email; $("rqEmail").classList.toggle("ticked", REDACT.email); };
+    $("rqPhone").onclick = () => { REDACT.phone = !REDACT.phone; $("rqPhone").classList.toggle("ticked", REDACT.phone); };
+    $("rqRemove").onclick = () => { removeRedactions(); closeFlyout(); };
+  });
+}
+view.addEventListener("contextmenu", (e) => {
+  if (!S.textMode || !S.tsel) return;
+  e.preventDefault();
+  const anchor = { getBoundingClientRect: () => ({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY, width: 0, height: 0 }), contains: () => false };
+  openFlyout(anchor, `<button class="mi" id="cmCopy">${icon("i-copy")}Copy text<span class="kb">Ctrl+C</span></button><button class="mi" id="cmRedact">Redact text</button>`, () => {
+    $("cmCopy").onclick = () => { closeFlyout(); copySelectedText(); };
+    $("cmRedact").onclick = () => { closeFlyout(); redactSelection(); };
+  });
+});
+$("btnTextActions").onclick = () => (S.textMode ? endTextActions() : startTextActions());
+$("taClose").onclick = endTextActions;
+$("taCopyAll").onclick = async () => { if (!S.ocr) return; await call("stCopyText", wordsText(S.ocr.words)); toast("All text copied"); };
+$("taTable").onclick = copyTable;
+$("taRedact").onclick = quickRedact;
+$("taRedactMenu").onclick = redactMenu;
+$("taRedactSel").onclick = redactSelection;
+
+/* ===================================================================== recordings (playback, trim, GIF) */
+const vid = $("vid");
+function fmtTime(t) { t = Math.max(0, t || 0); const m = Math.floor(t / 60), sec = Math.floor(t % 60), ds = Math.floor((t * 10) % 10); return `${m}:${String(sec).padStart(2, "0")}.${ds}`; }
+function showVideo(info) {
+  if (S.editingText >= 0) endTextEdit();
+  S.video = { path: info.path, name: info.name, duration: info.duration || 0, start: 0, end: info.duration || 0, trimming: false };
+  S.img = null; document.body.classList.remove("has-image"); document.body.classList.add("has-video");
+  $("textBar").classList.remove("show"); $("cropBar").classList.remove("show"); $("trimBar").classList.remove("show"); $("btnTrim").classList.remove("on");
+  S.video.unsaved = !!info.unsaved;
+  call("stHasImage", true); call("stSetDirty", S.video.unsaved);
+  vid.src = info.url; vid.load();
+}
+function leaveVideo() {
+  if (!S.video) return;
+  S.video = null; vid.pause(); vid.removeAttribute("src"); vid.load();
+  document.body.classList.remove("has-video");
+}
+vid.addEventListener("loadedmetadata", () => {
+  if (!S.video) return;
+  if (isFinite(vid.duration) && vid.duration > 0) { S.video.duration = vid.duration; if (!S.video.end || S.video.end > vid.duration) S.video.end = vid.duration; }
+  updateTrim();
+});
+vid.addEventListener("timeupdate", () => {
+  if (!S.video) return;
+  if (S.video.trimming || S.video.start > 0 || S.video.end < S.video.duration) {
+    if (vid.currentTime > S.video.end) { vid.pause(); vid.currentTime = S.video.start; }
+    if (vid.currentTime < S.video.start - 0.05) vid.currentTime = S.video.start;
+  }
+  updateTrim(true);
+});
+function updateTrim(headOnly) {
+  const v = S.video; if (!v || !v.duration) return;
+  const pct = (t) => (100 * t / v.duration) + "%";
+  $("trimHead").style.left = pct(vid.currentTime || 0);
+  if (headOnly) return;
+  $("trimSel").style.left = pct(v.start); $("trimSel").style.width = (100 * (v.end - v.start) / v.duration) + "%";
+  $("trimA").style.left = pct(v.start); $("trimB").style.left = pct(v.end);
+  $("trimStartL").textContent = fmtTime(v.start); $("trimEndL").textContent = fmtTime(v.end);
+}
+$("btnTrim").onclick = () => {
+  if (!S.video) return;
+  S.video.trimming = !S.video.trimming;
+  $("btnTrim").classList.toggle("on", S.video.trimming); $("trimBar").classList.toggle("show", S.video.trimming); updateTrim();
+};
+function dragHandle(el, which) {
+  el.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    const track = $("trimTrack").getBoundingClientRect(), v = S.video;
+    const move = (ev) => {
+      const t = Math.max(0, Math.min(1, (ev.clientX - track.left) / track.width)) * v.duration;
+      if (which === "a") v.start = Math.min(t, v.end - 0.2); else v.end = Math.max(t, v.start + 0.2);
+      vid.currentTime = which === "a" ? v.start : v.end; updateTrim();
+    };
+    const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); };
+    el.addEventListener("pointermove", move); el.addEventListener("pointerup", up);
+  });
+}
+dragHandle($("trimA"), "a"); dragHandle($("trimB"), "b");
+$("trimTrack").addEventListener("pointerdown", (e) => {
+  if (e.target.classList.contains("trimHandle") || !S.video) return;
+  const r = $("trimTrack").getBoundingClientRect(); vid.currentTime = Math.max(S.video.start, Math.min(S.video.end, (e.clientX - r.left) / r.width * S.video.duration));
+});
+async function saveVideo() {
+  const v = S.video; if (!v) return;
+  try {
+    const p = await callAsync("stSaveVideo", v.path, v.start, v.end || v.duration, v.duration);
+    if (p) { v.unsaved = false; call("stSetDirty", false); toast(`Saved to ${esc(p)}<a id="tShow">Show in folder</a>`, 5000); const a = $("tShow"); if (a) a.onclick = () => call("stShowInFolder", p); }
+  } catch (e) { toast("Save failed: " + esc(e), 8000); }
+  return S.video && !S.video.unsaved;
+}
+$("btnSaveVideo").onclick = saveVideo;
+
+const GIF_Q = { low: { fps: 10, maxW: 480, label: "Low" }, high: { fps: 15, maxW: 960, label: "High" } };
+let gifQuality = "high", gifBusy = false;
+function gifPlan() {
+  const v = S.video, q = GIF_Q[gifQuality];
+  const dur = Math.min(30, Math.max(0, (v.end || v.duration) - v.start));
+  const w0 = vid.videoWidth || 0, h0 = vid.videoHeight || 0, k = w0 > q.maxW ? q.maxW / w0 : 1;
+  return { dur, fps: q.fps, w: Math.max(2, Math.round(w0 * k)), h: Math.max(2, Math.round(h0 * k)), frames: Math.max(1, Math.round(dur * q.fps)) };
+}
+function gifMenu() {
+  if (!S.video) return;
+  const render = () => {
+    const p = gifPlan();
+    return `<div class="fly-pad" style="width:300px"><div class="fly-title">Export as GIF</div>
+      <div class="qual"><button data-q="low" class="${gifQuality === "low" ? "on" : ""}">Low quality</button><button data-q="high" class="${gifQuality === "high" ? "on" : ""}">High quality</button></div>
+      <div class="gif-info"><span>Duration</span><span>${p.dur.toFixed(1)} s${(S.video.end - S.video.start) > 30 ? " (first 30 s)" : ""}</span><span>Resolution</span><span>${p.w} × ${p.h}</span><span>Frame rate</span><span>${p.fps} fps</span></div>
+      <div class="progress" id="gifProg"><div></div></div>
+      <div class="fly-actions"><button class="btn" id="gifCopy">Copy</button><button class="btn accent" id="gifExport">Export</button></div></div>`;
+  };
+  const bind = (f) => {
+    f.querySelectorAll("[data-q]").forEach(b => b.onclick = () => { if (gifBusy) return; gifQuality = b.dataset.q; f.innerHTML = render(); bind(f); });
+    $("gifExport").onclick = () => exportGif("save");
+    $("gifCopy").onclick = () => exportGif("copy");
+  };
+  openFlyout($("btnGif"), render(), bind, "right");
+}
+$("btnGif").onclick = gifMenu;
+function seek(t) { return new Promise((res) => { const on = () => { vid.removeEventListener("seeked", on); res(); }; vid.addEventListener("seeked", on); vid.currentTime = t; }); }
+async function exportGif(action) {
+  if (gifBusy || !S.video) return;
+  gifBusy = true;
+  const p = gifPlan(), prog = $("gifProg"), bar = prog && prog.firstElementChild;
+  if (prog) prog.classList.add("show");
+  const wasT = vid.currentTime; vid.pause();
+  try {
+    const id = await call("stGifBegin", gifQuality);
+    const c = document.createElement("canvas"); c.width = p.w; c.height = p.h; const g = c.getContext("2d");
+    for (let i = 0; i < p.frames; i++) {
+      await seek(S.video.start + i / p.fps);
+      g.drawImage(vid, 0, 0, p.w, p.h);
+      await call("stGifFrame", id, c.toDataURL("image/png"));
+      if (bar) bar.style.width = (100 * (i + 1) / p.frames) + "%";
+    }
+    const r = await callAsync("stGifFinish", id, action, S.video.name);
+    closeFlyout();
+    if (action === "copy") toast("GIF copied to clipboard");
+    else if (r) { toast(`Saved to ${esc(r)}<a id="tShow">Show in folder</a>`, 5000); const a = $("tShow"); if (a) a.onclick = () => call("stShowInFolder", r); }
+  } catch (e) { toast("GIF export failed: " + esc(e), 8000); }
+  finally { gifBusy = false; vid.currentTime = wasT; }
+}
+
+/* ===================================================================== dialog / close */
+let dlgResolve = null;
+function dialog(title, text, buttons, keepBody) {
+  $("dlgTitle").textContent = title; if (!keepBody) $("dlgText").textContent = text;
+  $("dlgFoot").innerHTML = buttons.map(([id, label, primary]) => `<button class="btn ${primary ? "accent" : ""}" data-r="${id}">${label}</button>`).join("");
+  $("scrim").classList.add("show");
+  $("dlgFoot").querySelectorAll("[data-r]").forEach(b => b.onclick = () => closeDialog(b.dataset.r));
+  $("dlgFoot").querySelector("button").focus();
+  return new Promise(r => dlgResolve = r);
+}
+function closeDialog(r) { $("scrim").classList.remove("show"); if (dlgResolve) { const f = dlgResolve; dlgResolve = null; f(r); } }
+window.stRequestClose = async () => {
+  const isVideo = !!S.video;
+  const r = await dialog(isVideo ? "Save recording?" : "Save changes?",
+    isVideo ? "This screen recording has not been saved. Do you want to save it?" : "Do you want to save the changes to your snip?",
+    [["save", "Save", true], ["discard", "Don't save"], ["cancel", "Cancel"]]);
+  if (r === "cancel") return;
+  if (r === "save" && !(isVideo ? await saveVideo() : await saveAs())) return;
+  call("stClose");
+};
+
+/* ===================================================================== mode / delay / empty state */
+function updateMode() {
+  const kind = S.settings.kind === "record" ? "record" : "snip";
+  $("segSnip").classList.toggle("on", kind === "snip"); $("segSnip").setAttribute("aria-checked", kind === "snip");
+  $("segRec").classList.toggle("on", kind === "record"); $("segRec").setAttribute("aria-checked", kind === "record");
+  if (!modesFor(kind).some(m => m.id === S.settings.mode)) S.settings.mode = "rectangle";
+  $("btnNew").title = kind === "record" ? "New recording (Ctrl+N)" : "New snip (Ctrl+N)";
+  const m = MODES.find(x => x.id === S.settings.mode) || MODES[0];
+  $("modeIcon").innerHTML = `<use href="#${m.icon}"/>`; $("btnMode").title = `Snipping mode: ${m.label} (Alt+M)`;
+  $("delayIcon").innerHTML = `<use href="#${S.settings.delay ? "i-timer" : "i-timer-off"}"/>`;
+  $("delayText").textContent = S.settings.delay ? S.settings.delay + "s" : "";
+  $("btnDelay").title = S.settings.delay ? `Delay: ${S.settings.delay} seconds (Alt+D)` : "No delay (Alt+D)";
+  updateEmpty();
+}
+const WINKEY = `<svg class="winkey" viewBox="0 0 12 12" aria-label="Windows key"><path fill="currentColor" d="M0 0h5.6v5.6H0zM6.4 0H12v5.6H6.4zM0 6.4h5.6V12H0zM6.4 6.4H12V12H6.4z"/></svg>`;
+function updateEmpty() {
+  const sc = S.shortcuts || { snip: true, record: true };
+  const rec = S.settings && S.settings.kind === "record";
+  const ok = rec ? sc.record : sc.snip;
+  $("emptyLine").innerHTML = ok
+    ? `Press <b>${WINKEY} + Alt + ${rec ? "V" : "S"}</b> to start a ${rec ? "recording" : "snip"}`
+    : `Select <b>New</b> to start a ${rec ? "recording" : "snip"}`;
+  $("emptyHint").textContent = ok ? "" : `${rec ? "Win + Alt + V" : "Win + Alt + S"} is used by another app.`;
+}
+
+/* ===================================================================== settings page */
+async function saveSettings() { try { const s = await call("stSaveSettings", JSON.stringify(S.settings)); if (s) S.settings = s; } catch (e) { toast("Settings could not be saved: " + esc(e)); } applyTheme(); }
+function applyTheme() {
+  const t = S.settings ? S.settings.theme : "system";
+  const dark = t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+function toggleCard(key, title, desc, sub) {
+  return `<div class="card ${sub ? "sub" : ""}"><div class="txt"><div class="t">${title}</div>${desc ? `<div class="d">${desc}</div>` : ""}</div>
+    <label class="toggle"><span>${S.settings[key] ? "On" : "Off"}</span><input type="checkbox" data-key="${key}" ${S.settings[key] ? "checked" : ""}></label></div>`;
+}
+function showSettings() {
+  const s = S.settings, folder = s.saveFolder || S.defaultDir || "Pictures\\Screenshots";
+  $("settings").innerHTML = `<div class="set-wrap">
+    <div class="set-head"><button id="setBack" title="Back (Esc)">${icon("i-back")}</button><h1>Settings</h1></div>
+    <div class="set-sec">Shortcuts</div>
+    ${shortcutCard("Start a snip", "S", (S.shortcuts || {}).snip !== false)}
+    ${shortcutCard("Start a recording", "V", (S.shortcuts || {}).record !== false)}
+    <div class="card"><div class="txt"><div class="t">Print Screen key</div><div class="d">${(S.shortcuts || {}).printScreenWindows
+      ? `Windows uses Print Screen for its own screen capture. To use it here, turn off "Use the Print screen key to open screen capture" in Windows Settings.`
+      : `Print Screen starts a snip.`}</div></div><button class="btn" id="setPs">Windows Settings</button></div>
+    <div class="set-sec">Snipping</div>
+    ${toggleCard("autoCopyChanges", "Automatically copy changes", "Changes made to snips are automatically copied to the clipboard")}
+    ${toggleCard("autoSaveScreenshots", "Automatically save original screenshots", "Original screenshots are saved to the screenshots folder")}
+    <div class="card sub"><div class="txt"><div class="t">Screenshots folder</div><div class="d">${esc(folder)}</div></div><button class="btn" id="setFolder">Change</button></div>
+    ${toggleCard("askToSaveEdited", "Ask to save edited screenshots", "Ask before closing a snip with unsaved changes")}
+    ${toggleCard("multipleWindows", "Multiple windows", "Open each new snip in its own window")}
+    ${toggleCard("openEditorAfterSnip", "Open the editor after every capture", "Open this window directly instead of showing a notification")}
+    ${toggleCard("borderEnabled", "Add border to each screenshot", "")}
+    <div class="card sub" id="borderOpts" style="${s.borderEnabled ? "" : "display:none"}"><div class="txt"><div class="t">Border</div><div class="d">Color and thickness</div></div>
+      <input type="color" id="setBorderColor" value="${s.borderColor}" style="width:36px;height:30px;border:none;background:none">
+      <select id="setBorderW">${[1,2,3,4,5,6,8,10].map(n => `<option ${n === s.borderThickness ? "selected" : ""} value="${n}">${n} px</option>`).join("")}</select></div>
+    <div class="set-sec">Text Extractor</div>
+    ${toggleCard("textAutoCopy", "Automatically copy text", "Text found by Text Extractor is copied to the clipboard")}
+    ${toggleCard("textRemoveLineBreaks", "Remove line breaks", "Join the lines of extracted text into one paragraph")}
+    <div class="set-sec">Screen recording</div>
+    ${toggleCard("autoSaveRecordings", "Automatically save original screen recordings", "Original screen recordings are saved to the recordings folder")}
+    <div class="card sub"><div class="txt"><div class="t">Screen recordings folder</div><div class="d">${esc(s.recordingsFolder || S.defaultVideoDir || "Videos\\Screen Recordings")}</div></div><button class="btn" id="setRecFolder">Change</button></div>
+    ${toggleCard("recordMic", "Include microphone input by default when a screen recording starts", "")}
+    ${toggleCard("recordSystemAudio", "Include system audio by default when a screen recording starts", "")}
+    <div class="set-sec">Appearance</div>
+    <div class="card"><div class="txt"><div class="t">App theme</div><div class="d">Select which app theme to display</div></div>
+      <div class="radio">${[["light","Light"],["dark","Dark"],["system","Use system setting"]].map(([v, l]) => `<label><input type="radio" name="theme" value="${v}" ${s.theme === v ? "checked" : ""}>${l}</label>`).join("")}</div></div>
+    <div class="set-sec">About</div>
+    <div class="card"><div class="txt"><div class="t">Snipping Tool Enhanced</div><div class="d">Version ${esc(S.version || "")} · Apache License 2.0</div></div></div>
+  </div>`;
+  $("settings").classList.add("show");
+  $("setBack").onclick = hideSettings;
+  $("setPs").onclick = () => call("stOpenWindowsSettings");
+  $("setRecFolder").onclick = async () => { const p = await callAsync("stPickFolder"); if (p) { S.settings.recordingsFolder = p; await saveSettings(); showSettings(); } };
+  $("setFolder").onclick = async () => { const p = await callAsync("stPickFolder"); if (p) { S.settings.saveFolder = p; await saveSettings(); showSettings(); } };
+  $("settings").querySelectorAll("input[data-key]").forEach(i => i.onchange = () => { S.settings[i.dataset.key] = i.checked; i.previousElementSibling.textContent = i.checked ? "On" : "Off"; if (i.dataset.key === "borderEnabled") $("borderOpts").style.display = i.checked ? "" : "none"; saveSettings(); });
+  $("setBorderColor").onchange = (e) => { S.settings.borderColor = e.target.value; saveSettings(); };
+  $("setBorderW").onchange = (e) => { S.settings.borderThickness = +e.target.value; saveSettings(); };
+  $("settings").querySelectorAll("input[name=theme]").forEach(r => r.onchange = () => { S.settings.theme = r.value; saveSettings(); });
+}
+function shortcutCard(title, key, ok) {
+  return `<div class="card"><div class="txt"><div class="t">${title}</div><div class="d">${ok ? "Works in any app, also when this window is closed" : "Used by another app, so it is not available"}</div></div>
+    <div style="font-weight:600;white-space:nowrap">${WINKEY} + Alt + ${key}</div></div>`;
+}
+function hideSettings() { $("settings").classList.remove("show"); }
+
+/* ===================================================================== start */
+async function start() {
+  let data = null;
+  try { data = await call("stLoad"); } catch (e) { /* preview outside the app */ }
+  data = data || { textDefaults: true, shortcuts: { snip: true, record: true, printScreen: true }, settings: { kind: "snip", textAutoCopy: true, textRemoveLineBreaks: false, autoSaveRecordings: false, recordMic: false, recordSystemAudio: true, recordingsFolder: "", autoCopyChanges: true, autoSaveScreenshots: true, askToSaveEdited: true, multipleWindows: false, borderEnabled: false, borderColor: "#000000", borderThickness: 1, openEditorAfterSnip: false, theme: "system", mode: "rectangle", delay: 0, saveFolder: "" }, printScreen: "ours", version: "preview" };
+  S.settings = data.settings; S.version = data.version; S.defaultDir = data.defaultDir; S.defaultVideoDir = data.defaultVideoDir;
+  S.shortcuts = data.shortcuts;
+  applyTheme(); updateMode(); updateToolIcons();
+  if (data.image) showImage(data.image);
+  else if (data.video) showVideo(data.video);
+}
+start();
+</script>
+</body>
+</html>
