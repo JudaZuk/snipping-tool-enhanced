@@ -24,7 +24,7 @@ One executable: `SnippingToolEnhanced.exe`.
 | Shapes with outline and fill, text box (font, size, color, highlight), emoji | Done (in the Shapes menu) |
 | Ruler, protractor, touch writing | Done (in the "…" menu; scroll rotates, Shift + scroll by 15°) |
 | Crop with handles (Shift keeps it square), undo / redo, zoom (Ctrl + scroll, Ctrl + 0 / 1) | Done |
-| Visual Search | Done: the Quick markup button searches the web for the snip in your default browser, with Bing (default) or Google Lens (Settings > Visual Search). The snip is uploaded to that search engine, and is not copied or saved |
+| Visual Search | Done: the button in the editor's markup toolbar (next to Share) and in Quick markup searches the web for the snip in your default browser, with Bing (default) or Google Lens (Settings > Visual Search). The snip is uploaded to that search engine, and is not copied or saved |
 | Save as PNG / JPEG / GIF, copy, Edit in Paint, print, open file | Done |
 | Share | Done: the Windows share sheet (Mail, Teams, Nearby sharing and other apps) for screenshots, recordings (the trimmed part, if trimmed) and Quick markup snips |
 | Settings page, light / dark / system theme | Done |

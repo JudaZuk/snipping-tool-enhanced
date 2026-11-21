@@ -41,6 +41,7 @@ window.stSaveAs = asyncRec('stSaveAs', 'C:\\\\Pictures\\\\Screenshots\\\\a.png')
 window.stOpenFile = asyncRec('stOpenFile', null); window.stPickFolder = asyncRec('stPickFolder', 'D:\\\\Shots');
 window.stSaveVideo = asyncRec('stSaveVideo', (...a) => { window.__saveVideo = a; return 'C:\\\\Videos\\\\v.mp4'; });
 window.stShareImage = asyncRec('stShareImage', (u) => { window.__shareImage = u; return null; });
+window.stVisualSearch = asyncRec('stVisualSearch', (u) => { window.__search = u; return null; });
 window.stShareVideo = asyncRec('stShareVideo', (...a) => { window.__shareVideo = a; return null; });
 window.__gifFrames = 0;
 window.stCopyText = rec('stCopyText', (t) => { window.__copied = t; return null; });
@@ -287,6 +288,17 @@ def main():
         pg.click("#btnShare")
         pg.wait_for_function("window.__shareImage")
         assert pg.evaluate("window.__shareImage.startsWith('data:image/png')")
+        # Visual Search sends the marked-up image; the tooltip names the engine.
+        assert pg.is_visible("#btnSearch")
+        pg.hover("#btnSearch")
+        assert pg.get_attribute("#btnSearch", "title") == "Visual Search with Bing"
+        pg.evaluate("S.settings.visualSearch = 'google'")
+        pg.mouse.move(0, 0); pg.hover("#btnSearch")
+        assert pg.get_attribute("#btnSearch", "title") == "Visual Search with Google Lens"
+        pg.evaluate("S.settings.visualSearch = 'bing'")
+        pg.click("#btnSearch")
+        pg.wait_for_function("window.__search")
+        assert pg.evaluate("window.__search.startsWith('data:image/png')")
         # Quick markup's Copy from the New button only shows a notice.
         pg.evaluate("window.__keepImg = S.img; window.stNewSnip = (id) => { setTimeout(() => window.stDone(id, { notice: 'Snip copied to clipboard' }, ''), 10); return Promise.resolve(); }")
         pg.click("#btnNew")

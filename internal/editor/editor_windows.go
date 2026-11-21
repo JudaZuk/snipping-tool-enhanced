@@ -367,6 +367,18 @@ func (e *editor) bind(initial *ImageInfo, initialVideo *VideoInfo) {
 		}
 		return nil, share.File(e.hwnd, p)
 	})
+	e.bindAsync("stVisualSearch", func(a []json.RawMessage) (any, error) {
+		var dataURL string
+		if len(a) > 0 {
+			_ = json.Unmarshal(a[0], &dataURL)
+		}
+		img, err := decodeDataURL(dataURL)
+		if err != nil {
+			return nil, err
+		}
+		// The marked-up snip goes to the web search only: not copied or saved.
+		return nil, visualsearch.Open(settings.Load(output.SettingsPath()).VisualSearch, img)
+	})
 	e.bindAsync("stShareVideo", func(a []json.RawMessage) (any, error) {
 		var p string
 		var start, end, dur float64
