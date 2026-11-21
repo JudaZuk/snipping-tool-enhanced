@@ -41,6 +41,8 @@ type Options struct {
 	// Save is called for Quick markup's Save button; it shows the Save dialog
 	// (owned by the overlay) and reports whether the snip was saved.
 	Save func(owner windows.HWND, r Result) bool
+	// SearchName is the Visual Search engine's name, for the tooltip.
+	SearchName string
 }
 
 // Result is what the user picked, in frame coordinates.
@@ -53,7 +55,7 @@ type Result struct {
 	Color     color.RGBA      // color picker
 	ColorText string
 	// Quick markup: the marks drawn over the area and the button used
-	// (ActCopy, ActSave or ActShare); empty when Quick markup was off.
+	// (ActCopy, ActSave, ActShare or ActSearch); empty when Quick markup was off.
 	Marks  []markup.Object
 	Action string
 	// QuickMarkup is the toggle's state when the overlay closed.

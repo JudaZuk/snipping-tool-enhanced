@@ -42,6 +42,7 @@ import (
 	"snippingtoolenhanced/internal/settings"
 	"snippingtoolenhanced/internal/share"
 	"snippingtoolenhanced/internal/snip"
+	"snippingtoolenhanced/internal/visualsearch"
 	"snippingtoolenhanced/internal/win"
 )
 
@@ -435,6 +436,8 @@ func (e *editor) newSnip(kind overlay.Kind, mode overlay.Mode, delay int) (any, 
 		}
 		win.BringToFront(e.hwnd)
 		return snipResult{}, share.File(e.hwnd, p)
+	case overlay.ActSearch:
+		return snipResult{}, visualsearch.Open(e.s.VisualSearch, res.Image)
 	case overlay.ActCopy:
 		s := e.s
 		s.AutoCopyChanges = true

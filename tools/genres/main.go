@@ -24,7 +24,7 @@ import (
 )
 
 func main() {
-	ver := "1.4.0"
+	ver := "1.5.0"
 	if len(os.Args) > 1 {
 		ver = os.Args[1]
 	}

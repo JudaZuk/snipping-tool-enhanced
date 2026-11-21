@@ -27,6 +27,7 @@ const (
 	ActCopy       = "copy"
 	ActSave       = "save"
 	ActShare      = "share"
+	ActSearch     = "search" // Visual Search
 	ActClose      = "mclose"
 )
 
@@ -75,6 +76,8 @@ type MarkupState struct {
 	Hover   string
 	Flyout  string // tool whose options are open, or ""
 	CanUndo bool
+	// SearchName is the Visual Search engine shown in the tooltip ("Bing").
+	SearchName string
 }
 
 // MarkupBar is the Quick markup toolbar next to the selection.
@@ -93,7 +96,7 @@ func (b MarkupBar) px(v float64) int { return int(math.Round(v * b.Scale)) }
 func LayoutMarkupBar(sel, mon image.Rectangle, scale float64) MarkupBar {
 	b := MarkupBar{Scale: scale, mon: mon}
 	pad, h, gap, group := b.px(6), b.px(40), b.px(4), b.px(14)
-	ids := []string{ToolPen, ToolHighlight, ToolEraser, ToolShapes, ToolEmoji, ActCopy, ActSave, ActShare, ActClose}
+	ids := []string{ToolPen, ToolHighlight, ToolEraser, ToolShapes, ToolEmoji, ActCopy, ActSave, ActShare, ActSearch, ActClose}
 	groupBefore := map[string]bool{ActCopy: true, ActClose: true}
 	w := pad * 2
 	for i, id := range ids {
@@ -174,7 +177,8 @@ var markupTips = map[string]string{
 
 var markupIcons = map[string]string{
 	ToolPen: render.IconPen, ToolHighlight: render.IconHighlight, ToolEraser: render.IconEraser, ToolShapes: render.IconShapes,
-	ToolEmoji: render.IconEmoji, ActCopy: render.IconCopy, ActSave: render.IconSave, ActShare: render.IconShare, ActClose: render.IconClose,
+	ToolEmoji: render.IconEmoji, ActCopy: render.IconCopy, ActSave: render.IconSave, ActShare: render.IconShare, ActSearch: render.IconVisualSearch,
+	ActClose: render.IconClose,
 }
 
 // Render draws the toolbar on a transparent image covering Area().
@@ -209,7 +213,13 @@ func (b MarkupBar) Render(th render.Theme, st MarkupState) *image.RGBA {
 		}
 		render.DrawIcon(out, markupIcons[it.ID], x, y, isz, th.Text)
 	}
-	if t, ok := markupTips[st.Hover]; ok && st.Flyout == "" {
+	if st.Hover == ActSearch && st.Flyout == "" {
+		name := st.SearchName
+		if name == "" {
+			name = "Bing"
+		}
+		b.tooltip(out, th, "Visual Search with "+name, b.item(ActSearch))
+	} else if t, ok := markupTips[st.Hover]; ok && st.Flyout == "" {
 		b.tooltip(out, th, t, b.item(st.Hover))
 	}
 	return out

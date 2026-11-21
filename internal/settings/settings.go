@@ -48,6 +48,8 @@ type Settings struct {
 	Delay int    `json:"delay"` // 0, 3, 5, 10
 	// QuickMarkup is the capture bar's Quick markup toggle (Ctrl+E).
 	QuickMarkup bool `json:"quickMarkup"`
+	// VisualSearch is the engine for Quick markup's Visual Search: "bing" or "google".
+	VisualSearch string `json:"visualSearch"`
 }
 
 // Default returns the factory settings.
@@ -60,6 +62,7 @@ func Default() Settings {
 		BorderColor:         "#000000",
 		BorderThickness:     1,
 		TextAutoCopy:        true,
+		VisualSearch:        "bing",
 		AutoSaveRecordings:  false, // like Windows 11: recordings are saved with Save
 		Version:             Version,
 		RecordMic:           false,

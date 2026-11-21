@@ -10,40 +10,41 @@ import (
 
 // Icon names.
 const (
-	IconCamera     = "camera"
-	IconVideo      = "video"
-	IconRectangle  = "rectangle"
-	IconSquare     = "square"
-	IconFreeform   = "freeform"
-	IconWindow     = "window"
-	IconFullscreen = "fullscreen"
-	IconMarkup     = "markup"
-	IconColor      = "colorpicker"
-	IconText       = "textextract"
-	IconClose      = "close"
-	IconChevron    = "chevron"
-	IconCheck      = "check"
-	IconRecord     = "record"
-	IconStop       = "stop"
-	IconPause      = "pause"
-	IconPlay       = "play"
-	IconDelete     = "delete"
-	IconMic        = "mic"
-	IconMicOff     = "micoff"
-	IconSpeaker    = "speaker"
-	IconSpeakerOff = "speakeroff"
-	IconPen        = "pen"
-	IconHighlight  = "highlighter"
-	IconEraser     = "eraser"
-	IconShapes     = "shapes"
-	IconEmoji      = "emoji"
-	IconCopy       = "copy"
-	IconSave       = "save"
-	IconShare      = "share"
-	IconLine       = "line"
-	IconArrow      = "arrow"
-	IconRect       = "rect"
-	IconOval       = "oval"
+	IconCamera       = "camera"
+	IconVideo        = "video"
+	IconRectangle    = "rectangle"
+	IconSquare       = "square"
+	IconFreeform     = "freeform"
+	IconWindow       = "window"
+	IconFullscreen   = "fullscreen"
+	IconMarkup       = "markup"
+	IconColor        = "colorpicker"
+	IconText         = "textextract"
+	IconClose        = "close"
+	IconChevron      = "chevron"
+	IconCheck        = "check"
+	IconRecord       = "record"
+	IconStop         = "stop"
+	IconPause        = "pause"
+	IconPlay         = "play"
+	IconDelete       = "delete"
+	IconMic          = "mic"
+	IconMicOff       = "micoff"
+	IconSpeaker      = "speaker"
+	IconSpeakerOff   = "speakeroff"
+	IconPen          = "pen"
+	IconHighlight    = "highlighter"
+	IconEraser       = "eraser"
+	IconShapes       = "shapes"
+	IconEmoji        = "emoji"
+	IconCopy         = "copy"
+	IconSave         = "save"
+	IconShare        = "share"
+	IconVisualSearch = "visualsearch"
+	IconLine         = "line"
+	IconArrow        = "arrow"
+	IconRect         = "rect"
+	IconOval         = "oval"
 )
 
 // pen draws pixel-snapped strokes: design coordinates are on a 20×20 grid and
@@ -229,6 +230,13 @@ func DrawIcon(dst *image.RGBA, name string, x, y, size float64, c color.RGBA) {
 		q.line(12.5, 3.5, 16.5, 7, 12.5, 10.5)
 		q.line(16.5, 7, 13, 7)
 		q.arc(13, 12, 5, 180, 270)
+	case IconVisualSearch: // scan corners around a magnifier
+		q.line(3, 7, 3, 3, 7, 3)
+		q.line(13, 3, 17, 3, 17, 7)
+		q.line(3, 13, 3, 17, 7, 17)
+		q.line(17, 13, 17, 17, 13, 17)
+		q.arc(9.3, 9.3, 3.3, 0, 360)
+		q.line(11.7, 11.7, 14, 14)
 	case IconLine:
 		q.line(4, 16, 16, 4)
 	case IconArrow:

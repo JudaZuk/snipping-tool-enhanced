@@ -104,6 +104,7 @@ var (
 
 	pShellNotifyIconW = shell32.NewProc("Shell_NotifyIconW")
 	pShellExecuteW    = shell32.NewProc("ShellExecuteW")
+	pAssocQueryString = windows.NewLazySystemDLL("shlwapi.dll").NewProc("AssocQueryStringW")
 
 	pDwmGetWindowAttribute = dwmapi.NewProc("DwmGetWindowAttribute")
 
@@ -981,6 +982,19 @@ func ShellOpen(target string) error {
 		return syscall.Errno(r)
 	}
 	return nil
+}
+
+// AssocCommand returns the open command registered for a URL protocol such
+// as "https" (the default browser), or "" if there is none.
+func AssocCommand(protocol string) string {
+	const assocfIsProtocol, assocstrCommand = 0x1000, 1
+	buf := make([]uint16, 2048)
+	n := uint32(len(buf))
+	r, _, _ := pAssocQueryString.Call(assocfIsProtocol, assocstrCommand, ptr(protocol), ptr("open"), uintptr(unsafe.Pointer(&buf[0])), uintptr(unsafe.Pointer(&n)))
+	if r != 0 {
+		return ""
+	}
+	return windows.UTF16ToString(buf)
 }
 
 // CopyString fills a fixed UTF-16 buffer (truncating).

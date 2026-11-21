@@ -61,7 +61,7 @@ func (s *state) enterMarkup(sel image.Rectangle, poly []image.Point) {
 	}
 	win.BitBlt(d.DC, 0, 0, s.w, s.h, s.bright.DC, 0, 0)
 	win.GdiFlush()
-	s.mk = &mkState{sel: sel, poly: poly, square: s.mode == Square, dib: d, st: MarkupState{Ink: DefaultInk()}}
+	s.mk = &mkState{sel: sel, poly: poly, square: s.mode == Square, dib: d, st: MarkupState{Ink: DefaultInk(), SearchName: s.opts.SearchName}}
 	s.dragging = false
 	win.ReleaseCapture()
 	s.layoutMarkup()
@@ -298,7 +298,7 @@ func (s *state) markResult(action string) Result {
 
 func (s *state) act(id string) {
 	switch id {
-	case ActCopy, ActShare:
+	case ActCopy, ActShare, ActSearch:
 		s.result = s.markResult(id)
 		s.done = true
 	case ActSave:

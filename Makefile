@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Cross-compile from Linux, macOS or WSL. On Windows use build.ps1.
 # make build ARCH=amd64   builds x64 only
-VERSION ?= 1.4.0
+VERSION ?= 1.5.0
 ARCH ?= amd64 arm64
 LDFLAGS := -s -w -H windowsgui -X snippingtoolenhanced/internal/editor.Version=$(VERSION)
 

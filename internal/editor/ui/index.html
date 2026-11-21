@@ -1567,6 +1567,9 @@ function showSettings() {
     <div class="card sub" id="borderOpts" style="${s.borderEnabled ? "" : "display:none"}"><div class="txt"><div class="t">Border</div><div class="d">Color and thickness</div></div>
       <input type="color" id="setBorderColor" value="${s.borderColor}" style="width:36px;height:30px;border:none;background:none">
       <select id="setBorderW">${[1,2,3,4,5,6,8,10].map(n => `<option ${n === s.borderThickness ? "selected" : ""} value="${n}">${n} px</option>`).join("")}</select></div>
+    <div class="set-sec">Visual Search</div>
+    <div class="card"><div class="txt"><div class="t">Search engine</div><div class="d">Quick markup's Visual Search sends the snip to this search engine in your browser</div></div>
+      <select id="setSearch">${[["bing","Bing"],["google","Google Lens"]].map(([v, l]) => `<option value="${v}" ${(s.visualSearch || "bing") === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
     <div class="set-sec">Text Extractor</div>
     ${toggleCard("textAutoCopy", "Automatically copy text", "Text found by Text Extractor is copied to the clipboard")}
     ${toggleCard("textRemoveLineBreaks", "Remove line breaks", "Join the lines of extracted text into one paragraph")}
@@ -1589,6 +1592,7 @@ function showSettings() {
   $("settings").querySelectorAll("input[data-key]").forEach(i => i.onchange = () => { S.settings[i.dataset.key] = i.checked; i.previousElementSibling.textContent = i.checked ? "On" : "Off"; if (i.dataset.key === "borderEnabled") $("borderOpts").style.display = i.checked ? "" : "none"; saveSettings(); });
   $("setBorderColor").onchange = (e) => { S.settings.borderColor = e.target.value; saveSettings(); };
   $("setBorderW").onchange = (e) => { S.settings.borderThickness = +e.target.value; saveSettings(); };
+  $("setSearch").onchange = (e) => { S.settings.visualSearch = e.target.value; saveSettings(); };
   $("settings").querySelectorAll("input[name=theme]").forEach(r => r.onchange = () => { S.settings.theme = r.value; saveSettings(); });
 }
 function shortcutCard(title, key, ok) {
@@ -1601,7 +1605,7 @@ function hideSettings() { $("settings").classList.remove("show"); }
 async function start() {
   let data = null;
   try { data = await call("stLoad"); } catch (e) { /* preview outside the app */ }
-  data = data || { textDefaults: true, shortcuts: { snip: true, record: true, printScreen: true }, settings: { kind: "snip", textAutoCopy: true, textRemoveLineBreaks: false, autoSaveRecordings: false, recordMic: false, recordSystemAudio: true, recordingsFolder: "", autoCopyChanges: true, autoSaveScreenshots: true, askToSaveEdited: true, multipleWindows: false, borderEnabled: false, borderColor: "#000000", borderThickness: 1, openEditorAfterSnip: false, theme: "system", mode: "rectangle", delay: 0, saveFolder: "" }, printScreen: "ours", version: "preview" };
+  data = data || { textDefaults: true, shortcuts: { snip: true, record: true, printScreen: true }, settings: { kind: "snip", textAutoCopy: true, textRemoveLineBreaks: false, autoSaveRecordings: false, recordMic: false, recordSystemAudio: true, recordingsFolder: "", autoCopyChanges: true, autoSaveScreenshots: true, askToSaveEdited: true, multipleWindows: false, borderEnabled: false, borderColor: "#000000", borderThickness: 1, openEditorAfterSnip: false, theme: "system", mode: "rectangle", delay: 0, saveFolder: "", visualSearch: "bing" }, printScreen: "ours", version: "preview" };
   S.settings = data.settings; S.version = data.version; S.defaultDir = data.defaultDir; S.defaultVideoDir = data.defaultVideoDir;
   S.shortcuts = data.shortcuts;
   applyTheme(); updateMode(); updateToolIcons();

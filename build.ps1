@@ -3,7 +3,7 @@
 #   .\build.ps1                 test + build x64 and ARM64
 #   .\build.ps1 -Arch amd64     x64 only (skips the ARM64 build)
 #   .\build.ps1 -Run            build and start the x64 app
-param([string]$Version = "1.4.0", [string[]]$Arch = @("amd64", "arm64"), [switch]$Run, [switch]$SkipTests)
+param([string]$Version = "1.5.0", [string[]]$Arch = @("amd64", "arm64"), [switch]$Run, [switch]$SkipTests)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) { throw "Go is not installed: winget install GoLang.Go" }

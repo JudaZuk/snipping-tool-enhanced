@@ -10,7 +10,7 @@ One executable: `SnippingToolEnhanced.exe`.
 | --- | --- |
 | Square, rectangle, freeform, window and full-screen snips | Done. Freeform areas outside the shape are transparent in PNG and white on the clipboard |
 | Capture bar | Done: snip / record toggle, snipping-area dropdown, Quick markup toggle, color picker, close. Shift + ←/→ switches mode, Esc cancels |
-| Quick markup | Done: turn it on with the capture bar button or Ctrl + E, then select an area. Mark it up right there with pen, highlighter, eraser (*Erase all ink*), shapes (line, arrow, rectangle, oval) and emoji, re-crop it with the grabbers, then Copy (Ctrl + C), Save as (Ctrl + S) or Share. Ctrl + Z / Ctrl + Y undo and redo, Esc cancels. Shared snips are not copied or saved automatically |
+| Quick markup | Done: turn it on with the capture bar button or Ctrl + E, then select an area. Mark it up right there with pen, highlighter, eraser (*Erase all ink*), shapes (line, arrow, rectangle, oval) and emoji, re-crop it with the grabbers, then Copy (Ctrl + C), Save as (Ctrl + S), Share or Visual Search. Ctrl + Z / Ctrl + Y undo and redo, Esc cancels. Shared snips are not copied or saved automatically |
 | Delay 3 / 5 / 10 s | Done (delay dropdown, Alt + D) |
 | Color picker | Done: magnifier, HEX / RGB / HSL (Tab switches format), scroll or Ctrl + / Ctrl − zooms, click copies |
 | Shortcuts | Win + Alt + S (snip), Win + Alt + V (record), Print Screen (see below) |
@@ -24,6 +24,7 @@ One executable: `SnippingToolEnhanced.exe`.
 | Shapes with outline and fill, text box (font, size, color, highlight), emoji | Done (in the Shapes menu) |
 | Ruler, protractor, touch writing | Done (in the "…" menu; scroll rotates, Shift + scroll by 15°) |
 | Crop with handles (Shift keeps it square), undo / redo, zoom (Ctrl + scroll, Ctrl + 0 / 1) | Done |
+| Visual Search | Done: the Quick markup button searches the web for the snip in your default browser, with Bing (default) or Google Lens (Settings > Visual Search). The snip is uploaded to that search engine, and is not copied or saved |
 | Save as PNG / JPEG / GIF, copy, Edit in Paint, print, open file | Done |
 | Share | Done: the Windows share sheet (Mail, Teams, Nearby sharing and other apps) for screenshots, recordings (the trimmed part, if trimmed) and Quick markup snips |
 | Settings page, light / dark / system theme | Done |
@@ -32,15 +33,6 @@ One executable: `SnippingToolEnhanced.exe`.
 | Text Actions | Done: select and copy text (Ctrl+A, Ctrl+C), *Copy all text*, *Copy as table* (tab-separated), *Quick redact* (email addresses, phone numbers), redact selected text (also via right-click), *Remove all redactions*. Uses the on-device Windows OCR engine |
 | Playback window | Done: play, trim, Save as, GIF export (first 30 s, low or high quality, Export or Copy) |
 | Group Policy *Do not allow Snipping Tool to run* (`DisableSnippingTool`) | Honored |
-
-## Not built yet
-
-These features are not in this version. Their buttons are shown grayed out:
-
-- Perfect screenshot
-- Visual Search
-- The `ms-screenclip:` protocol
-- HDR settings
 
 Text recognition needs an OCR language. Most Windows 11 installs have one for the display language; others can be added in *Settings > Time & language > Language & region*.
 
@@ -82,6 +74,7 @@ The editor uses the Microsoft Edge WebView2 Runtime, which is included with Wind
 
 - `go test ./...` tests the capture, imaging, settings and rendering logic.
 - `python test/editor_test.py` drives the editor in headless Chromium. It needs `pip install playwright` and `python -m playwright install chromium`.
+- `python test/visualsearch_test.py <folder>` checks that the Visual Search pages post the snip to Bing and Google Lens correctly (requests are intercepted, nothing is sent). The folder needs `bing.html`, `google.html` and `snip.jpg` made by `visualsearch.Page`.
 
 ## License
 

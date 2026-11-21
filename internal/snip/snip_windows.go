@@ -26,6 +26,7 @@ import (
 	"snippingtoolenhanced/internal/overlay"
 	"snippingtoolenhanced/internal/recui"
 	"snippingtoolenhanced/internal/settings"
+	"snippingtoolenhanced/internal/visualsearch"
 	"snippingtoolenhanced/internal/win"
 )
 
@@ -40,7 +41,8 @@ type Result struct {
 	Text      string // Text Extractor
 	Copied    bool   // Text Extractor copied Text to the clipboard
 	// Action is the Quick markup button that finished the snip:
-	// overlay.ActCopy, overlay.ActSave (already saved) or overlay.ActShare.
+	// overlay.ActCopy, overlay.ActSave (already saved), overlay.ActShare or
+	// overlay.ActSearch (Visual Search).
 	Action string
 	Area   image.Rectangle // the snipped area, in virtual-screen coordinates
 	Err    error
@@ -104,7 +106,8 @@ func run(kind overlay.Kind, mode overlay.Mode, text bool, delay time.Duration, s
 		}
 		return p != ""
 	}
-	res, err := overlay.Run(overlay.Options{Frame: frame, Kind: kind, Mode: mode, Text: text, Dark: Dark(s), QuickMarkup: s.QuickMarkup, Save: save})
+	res, err := overlay.Run(overlay.Options{Frame: frame, Kind: kind, Mode: mode, Text: text, Dark: Dark(s), QuickMarkup: s.QuickMarkup, Save: save,
+		SearchName: visualsearch.Name(s.VisualSearch)})
 	if err != nil {
 		return Result{Outcome: overlay.Cancelled, Err: err}
 	}

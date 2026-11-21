@@ -342,6 +342,10 @@ def main():
         assert pg.is_visible("#settings")
         pg.click("input[data-key=multipleWindows]", force=True)
         assert pg.evaluate("S.settings.multipleWindows") is True
+        # Visual Search engine: Bing by default, Google Lens can be picked.
+        assert pg.input_value("#setSearch") == "bing"
+        pg.select_option("#setSearch", "google")
+        assert pg.evaluate("S.settings.visualSearch") == "google"
         if shots: pg.screenshot(path=str(shots / "settings.png"))
         pg.click("#setBack")
         pg.close()

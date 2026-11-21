@@ -29,6 +29,7 @@ import (
 	"snippingtoolenhanced/internal/settings"
 	"snippingtoolenhanced/internal/share"
 	"snippingtoolenhanced/internal/snip"
+	"snippingtoolenhanced/internal/visualsearch"
 	"snippingtoolenhanced/internal/win"
 )
 
@@ -131,6 +132,7 @@ func Run() int {
 		return 0
 	}
 	defer windows.CloseHandle(m)
+	go visualsearch.Cleanup() // leftover search pages hold snips
 	if err := win.RegisterClass(className, proc, win.IDC_ARROW, 0); err != nil {
 		return 10
 	}
@@ -212,6 +214,11 @@ func doSnip(kind overlay.Kind) {
 		}
 		if err != nil {
 			notify.Show(nil, "The snip could not be shared", err.Error(), dark, nil)
+		}
+		return
+	case overlay.ActSearch: // the snip goes to the web search only: not copied or saved
+		if err := visualsearch.Open(s.VisualSearch, res.Image); err != nil {
+			notify.Show(nil, "Visual Search could not start", err.Error(), dark, nil)
 		}
 		return
 	case overlay.ActCopy:

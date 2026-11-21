@@ -85,7 +85,7 @@ func TestMarkupPreview(t *testing.T) {
 			draw.Draw(img, src.Bounds().Add(image.Pt(dx, dy)), src, src.Bounds().Min, draw.Over)
 		}
 		b := LayoutMarkupBar(image.Rect(300, 0, 900, 40), image.Rect(0, 0, 1500, 820), 1)
-		paste(b.Render(th, MarkupState{Ink: ink, Hover: ActShare}), 0, 0)
+		paste(b.Render(th, MarkupState{Ink: ink, Hover: ActSearch, SearchName: "Google Lens"}), 0, 0)
 		x := 0
 		for _, tool := range []string{ToolPen, ToolHighlight, ToolShapes, ToolEraser, ToolEmoji} {
 			fl := b.LayoutFlyout(tool)
